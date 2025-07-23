@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  eureka:
+    build: ../service-registry
+    ports:
+      - "8761:8761"
+
+  config-server:
+    build: ../config-server
+    ports:
+      - "8888:8888"
+
+  gateway:
+    build: ../api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka
+      - config-server
+
+  product-service:
+    build: ../product-service
+    depends_on:
+      - eureka
+      - config-server
