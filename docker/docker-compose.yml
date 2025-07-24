@@ -1,25 +1,85 @@
 version: '3.8'
+name: takapedia
 services:
-  eureka:
-    build: ../service-registry
-    ports:
-      - "8761:8761"
-
   config-server:
-    build: ../config-server
+    container_name: config-server
+    build:
+      context: ../
+      dockerfile: config-server/Dockerfile
+    image: config-server:latest
     ports:
       - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    networks:
+      - takapedia-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
-  gateway:
-    build: ../api-gateway
+  service-registry:
+    container_name: service-registry
+    build:
+      context: ../
+      dockerfile: service-registry/Dockerfile
+    image: service-registry:latest
     ports:
-      - "8080:8080"
+      - "8761:8761"
     depends_on:
-      - eureka
-      - config-server
+      config-server:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - EUREKA_ENVIRONMENT=dev
+    networks:
+      - takapedia-network
 
-  product-service:
-    build: ../product-service
+  api-gateway:
+    container_name: api-gateway
+    build:
+      context: ../
+      dockerfile: api-gateway/Dockerfile
+    image: api-gateway:latest
+    ports:
+      - "80:80"
     depends_on:
-      - eureka
-      - config-server
+      config-server:
+        condition: service_healthy
+      service-registry:
+        condition: service_started
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - EUREKA_URI=http://service-registry:8761/eureka
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - AUTH_SERVICE_URI=lb://authentication-service
+    networks:
+      - takapedia-network
+
+  authentication-service:
+    container_name: authentication-service
+    build:
+      context: ../
+      dockerfile: authentication-service/Dockerfile
+    image: authentication-service:latest
+    ports:
+      - "8081:8081"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      service-registry:
+          condition: service_started
+      api-gateway:
+          condition: service_started
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - CONFIG_URI=http://config-server:8888
+      - EUREKA_URI=http://service-registry:8761/eureka
+    networks:
+      - takapedia-network
+
+networks:
+  takapedia-network:
+    driver: bridge
