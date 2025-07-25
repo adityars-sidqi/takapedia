@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/tag")
@@ -32,5 +33,12 @@ public class TagController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<TagResponse> save(@RequestBody CreateTagRequest  createTagRequest) {
         return ApiResponse.success(tagService.save(createTagRequest));
+    }
+
+    @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> delete(@PathVariable("id") UUID id) {
+        tagService.deleteById(id);
+        return ApiResponse.success(null);
     }
 }

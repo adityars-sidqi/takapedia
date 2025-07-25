@@ -1,15 +1,19 @@
 package com.rahman.productservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rahman.commonlib.exception.ResourceNotFoundException;
 import com.rahman.productservice.dto.tag.CreateTagRequest;
 import com.rahman.productservice.dto.tag.TagResponse;
 import com.rahman.productservice.entity.Tag;
 import com.rahman.productservice.mapper.TagMapper;
 import com.rahman.productservice.service.TagService;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -22,8 +26,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(
@@ -48,6 +51,9 @@ class TagControllerTest {
 
     @Autowired
     private TagMapper tagMapper;
+
+    @Autowired
+    private MessageSource messageSource;
 
     @Test
     @WithMockUser(roles = "ADMIN")
@@ -87,6 +93,39 @@ class TagControllerTest {
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.message", is("success")))
                 .andExpect(jsonPath("$.data.name", is("Makeup")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testDelete_ReturnSuccess() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(delete("/tag/" + id)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("success")))
+                .andExpect(jsonPath("$.data").value(Matchers.nullValue()));
+
+        verify(tagService).deleteById(id);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testDelete_WhenIdNotFound_ReturnNotFound() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        doThrow(new ResourceNotFoundException(messageSource.getMessage("tag.not_found", null, LocaleContextHolder.getLocale())))
+                .when(tagService).deleteById(any(UUID.class));
+
+        mockMvc.perform(delete("/tag/" + id)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.message", is("Tag not found.")))
+                .andExpect(jsonPath("$.data").value(Matchers.nullValue()));
+
+        verify(tagService).deleteById(id);
     }
 
 
