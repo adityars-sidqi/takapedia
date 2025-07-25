@@ -2,6 +2,7 @@ package com.rahman.productservice.controller;
 
 import com.rahman.commonlib.ApiResponse;
 import com.rahman.productservice.ProductServiceApplication;
+import com.rahman.productservice.dto.tag.CreateTagRequest;
 import com.rahman.productservice.dto.tag.TagResponse;
 import com.rahman.productservice.entity.Tag;
 import com.rahman.productservice.repository.TagRepository;
@@ -12,9 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -27,7 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "spring.cloud.config.enabled=false",
-                "spring.cloud.config.fail-fast=false"
+                "spring.cloud.config.fail-fast=false",
+                "spring.cloud.discovery.enabled=false",
+                "eureka.client.enabled=false"
         }
 )
 @ActiveProfiles("test")
@@ -107,4 +108,60 @@ class TagControllerIntegrationTest {
         assertThat(response.getBody().data()).isNotNull();
         assertThat(response.getBody().data()).isEmpty();
     }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testSaveTag_ReturnsSuccess() {
+        CreateTagRequest request = new CreateTagRequest("Makeup");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<CreateTagRequest> entity = new HttpEntity<>(request, headers);
+
+        // Execute
+        ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                baseUrl,
+                HttpMethod.POST,
+                entity,
+                new ParameterizedTypeReference<>() {}
+        );
+
+        // Validasi response
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().success()).isTrue();
+        assertThat(response.getBody().message()).isNotEmpty();
+        assertThat(response.getBody().message()).isEqualTo("success");
+        assertThat(response.getBody().data()).isNotNull();
+        assertThat(response.getBody().data().name()).isEqualTo("Makeup");
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testSaveTag_WhenNameIsBlank_ReturnsBadRequest() {
+        CreateTagRequest request = new CreateTagRequest("");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<CreateTagRequest> entity = new HttpEntity<>(request, headers);
+
+        // Execute
+        ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                baseUrl,
+                HttpMethod.POST,
+                entity,
+                new ParameterizedTypeReference<>() {}
+        );
+
+        // Validasi response
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().success()).isFalse();
+        assertThat(response.getBody().message()).isNotEmpty();
+        assertThat(response.getBody().message()).isEqualTo("name: Tag name is required");
+        assertThat(response.getBody().data()).isNull();
+    }
+
 }
