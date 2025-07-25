@@ -7,18 +7,22 @@ import com.rahman.authenticationservice.model.dto.TokenResponse;
 import com.rahman.authenticationservice.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-@RestController
-@RequestMapping("/auth")
-@RequiredArgsConstructor
 @Slf4j
+@RestController
 public class AuthController {
 
     private final AuthService authService;
+
+    @Autowired
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
 
     @PostMapping("/login")
     public Mono<ResponseEntity<TokenResponse>> login(@RequestBody LoginRequest loginRequest) {

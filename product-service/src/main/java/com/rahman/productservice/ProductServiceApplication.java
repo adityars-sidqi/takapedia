@@ -2,8 +2,13 @@ package com.rahman.productservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {
+		"com.rahman.productservice",
+		"com.rahman.commonlib"
+})
+@EnableJpaAuditing
 public class ProductServiceApplication {
 
 	public static void main(String[] args) {

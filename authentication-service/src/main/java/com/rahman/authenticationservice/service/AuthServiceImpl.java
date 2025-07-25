@@ -4,6 +4,7 @@ import com.rahman.authenticationservice.constant.AppConstants;
 import com.rahman.authenticationservice.model.dto.PasswordKeyCloakDto;
 import com.rahman.authenticationservice.model.dto.TokenResponse;
 import com.rahman.authenticationservice.properties.KeyCloakProperties;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -21,6 +22,7 @@ import java.util.Objects;
 
 
 @Service
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final WebClient keycloakWebClient;
@@ -50,18 +52,20 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public Mono<Void> logout(String refreshToken) {
+        log.info("Start Proses Logout");
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add(AppConstants.CLIENT_ID, keyCloakProperties.getClientId());
         formData.add(AppConstants.CLIENT_SECRET, keyCloakProperties.getClientSecret());
         formData.add(AppConstants.REFRESH_TOKEN, refreshToken);
-
-        return keycloakWebClient.post()
-                .uri( AppConstants.KEYCLOAK_REALM_PATH + "/" + keyCloakProperties.getRealm() + "/protocol/openid-connect/logout", keyCloakProperties.getRealm())
+        keycloakWebClient.post()
+                .uri( AppConstants.KEYCLOAK_REALM_PATH + "/" + keyCloakProperties.getRealm() + "/protocol/openid-connect/logout")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .bodyValue(formData)
                 .retrieve()
                 .toBodilessEntity()
-                .then();
+                .block();
+        log.info("End Proses Logout");
+        return Mono.empty();
     }
 
     @Override

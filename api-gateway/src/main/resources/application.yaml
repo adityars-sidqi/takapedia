@@ -1,37 +1,17 @@
 server:
   port: ${SERVER_PORT:80}
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
-
-
 spring:
   application:
     name: api-gateway
   config:
     import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
-  cloud:
-    config:
-      uri: ${CONFIG_SERVER_URI:http://localhost:8888}
-      enabled: ${CONFIG_SERVER_ENABLED:true}
-    gateway:
-      server:
-        webflux:
-          discovery:
-            locator:
-              lower-case-service-id: true
-              enabled: true
-          routes:
-            - id: authentication-service
-              uri: ${AUTH_SERVICE_URI:http://localhost:8081}
-              predicates:
-                - Path=/api/auth/**
-              filters:
-                - StripPrefix=1
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}

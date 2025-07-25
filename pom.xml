@@ -27,6 +27,8 @@
         <spring-cloud.version>2025.0.0</spring-cloud.version>
         <common-lib.version>1.0.0</common-lib.version>
         <lombok.version>1.18.32</lombok.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <springdoc-openapi.version>1.2.32</springdoc-openapi.version>
     </properties>
 
     <dependencyManagement>
