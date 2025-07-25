@@ -6,8 +6,8 @@ import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 public record CreateCategoryRequest(
-        @NotBlank(message = "{NotBlank.category.name}")
-        @Size(max = 100, message = "{Size.category.name}")
+        @NotBlank(message = "{category.name.not_blank}")
+        @Size(max = 100, message = "{category.name.size}")
         String name,
         String description,
         UUID parentId)

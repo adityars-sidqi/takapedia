@@ -5,6 +5,7 @@ import com.rahman.productservice.dto.category.CategorySimpleResponse;
 import com.rahman.productservice.dto.category.CreateCategoryRequest;
 import com.rahman.productservice.entity.Category;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,6 +29,13 @@ public interface CategoryMapper {
                         .collect(Collectors.toSet())
                         : Set.of()
         );
-    };
+    }
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "categories", ignore = true)
+    @Mapping(target = "parent", ignore = true)
+    @Mapping(target = "products", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     Category mapToEntity(CreateCategoryRequest request);
 }
