@@ -18,6 +18,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -161,6 +162,66 @@ class TagControllerIntegrationTest {
         assertThat(response.getBody().success()).isFalse();
         assertThat(response.getBody().message()).isNotEmpty();
         assertThat(response.getBody().message()).isEqualTo("name: Tag name is required");
+        assertThat(response.getBody().data()).isNull();
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testDeleteTag_Success() {
+        
+        //Prepare data
+        Tag tag = new Tag();
+        tag.setName("Makeup");
+        Tag tagSaved = tagRepository.save(tag);
+        UUID id = tagSaved.getId();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<CreateTagRequest> entity = new HttpEntity<>(headers);
+
+        // Execute
+        ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                baseUrl + "/" +  id,
+                HttpMethod.DELETE,
+                entity,
+                new ParameterizedTypeReference<>() {}
+        );
+
+        // Validasi response
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().success()).isTrue();
+        assertThat(response.getBody().message()).isNotEmpty();
+        assertThat(response.getBody().message()).isEqualTo("success");
+        assertThat(response.getBody().data()).isNull();
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testDeleteTag_NotFound() {
+
+        UUID id = UUID.randomUUID();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<CreateTagRequest> entity = new HttpEntity<>(headers);
+
+        // Execute
+        ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                baseUrl + "/" +  id,
+                HttpMethod.DELETE,
+                entity,
+                new ParameterizedTypeReference<>() {}
+        );
+
+        // Validasi response
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().success()).isFalse();
+        assertThat(response.getBody().message()).isNotEmpty();
+        assertThat(response.getBody().message()).isEqualTo("Tag not found.");
         assertThat(response.getBody().data()).isNull();
     }
 
