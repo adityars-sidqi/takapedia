@@ -3,6 +3,7 @@ package com.rahman.productservice.security;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Configuration
+@Profile("!test")
 @EnableWebSecurity
 @EnableMethodSecurity
 public class WebSecurity {
