@@ -1,10 +1,10 @@
 package com.rahman.productservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rahman.commonlib.exception.ResourceNotFoundException;
 import com.rahman.productservice.dto.tag.CreateTagRequest;
 import com.rahman.productservice.dto.tag.TagResponse;
 import com.rahman.productservice.entity.Tag;
+import com.rahman.productservice.exception.ResourceNotFoundException;
 import com.rahman.productservice.mapper.TagMapper;
 import com.rahman.productservice.service.TagService;
 import org.hamcrest.Matchers;

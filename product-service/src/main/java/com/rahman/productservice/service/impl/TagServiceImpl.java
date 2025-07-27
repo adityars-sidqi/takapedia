@@ -1,9 +1,9 @@
 package com.rahman.productservice.service.impl;
 
-import com.rahman.commonlib.exception.ResourceNotFoundException;
 import com.rahman.productservice.dto.tag.CreateTagRequest;
 import com.rahman.productservice.dto.tag.TagResponse;
 import com.rahman.productservice.entity.Tag;
+import com.rahman.productservice.exception.ResourceNotFoundException;
 import com.rahman.productservice.mapper.TagMapper;
 import com.rahman.productservice.repository.TagRepository;
 import com.rahman.productservice.service.TagService;

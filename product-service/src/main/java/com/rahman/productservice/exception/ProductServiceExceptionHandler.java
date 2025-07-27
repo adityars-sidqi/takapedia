@@ -1,6 +1,7 @@
 package com.rahman.productservice.exception;
 
 import com.rahman.commonlib.ApiResponse;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -20,6 +21,29 @@ public class ProductServiceExceptionHandler {
         this.messageSource = messageSource;
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Object>> handleGeneralError() {
+        ApiResponse<Object> response = ApiResponse.fail("Internal server error");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<String>> constraintViolationException(ConstraintViolationException exception) {
+        return ResponseEntity.badRequest().body(
+                ApiResponse.fail(exception.getMessage())
+        );
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleResourceNotFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail(ex.getMessage()));
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadRequest(BadRequestException ex) {
+        return ResponseEntity.badRequest().body(ApiResponse.fail(ex.getMessage()));
+    }
+
     @ExceptionHandler(ProductOutOfStockException.class)
     public ResponseEntity<ApiResponse<Void>> handleProductOutOfStock(ProductOutOfStockException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail(ex.getMessage()));
@@ -36,7 +60,7 @@ public class ProductServiceExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation() {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail(messageSource.getMessage("common.duplicate", null,  LocaleContextHolder.getLocale())));
     }
 }

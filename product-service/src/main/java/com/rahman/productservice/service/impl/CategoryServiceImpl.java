@@ -1,11 +1,11 @@
 package com.rahman.productservice.service.impl;
 
-import com.rahman.commonlib.exception.BadRequestException;
-import com.rahman.commonlib.exception.ResourceNotFoundException;
 import com.rahman.productservice.dto.category.CategoryResponse;
 import com.rahman.productservice.dto.category.CreateCategoryRequest;
 import com.rahman.productservice.dto.category.UpdateCategoryRequest;
 import com.rahman.productservice.entity.Category;
+import com.rahman.productservice.exception.BadRequestException;
+import com.rahman.productservice.exception.ResourceNotFoundException;
 import com.rahman.productservice.mapper.CategoryMapper;
 import com.rahman.productservice.repository.CategoryRepository;
 import com.rahman.productservice.service.CategoryService;
@@ -18,7 +18,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
+
+import static com.rahman.productservice.constants.MessagesCodeConstant.CATEGORY_NOT_FOUND;
 
 @Service
 public class CategoryServiceImpl implements CategoryService {
@@ -44,7 +45,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         return categories.stream()
                 .map(categoryMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -64,7 +65,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         if (createCategoryRequest.parentId() != null) {
             Category parentCategory = categoryRepository.findById(createCategoryRequest.parentId())
-                    .orElseThrow(() -> new ResourceNotFoundException(messageSource.getMessage("category.not_found", null, LocaleContextHolder.getLocale()))); // gunakan i18n key
+                    .orElseThrow(() -> new ResourceNotFoundException(messageSource.getMessage(CATEGORY_NOT_FOUND, null, LocaleContextHolder.getLocale()))); // gunakan i18n key
 
             category.setParent(parentCategory);
         }
@@ -80,7 +81,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         Category category = categoryRepository.findById(id).orElseThrow(() ->
                 new ResourceNotFoundException(
-                        messageSource.getMessage("category.not_found", null, LocaleContextHolder.getLocale())
+                        messageSource.getMessage(CATEGORY_NOT_FOUND, null, LocaleContextHolder.getLocale())
                 ));
 
         // Update name jika tidak null dan tidak kosong
@@ -115,7 +116,7 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                messageSource.getMessage("category.not_found", null, LocaleContextHolder.getLocale())
+                                messageSource.getMessage(CATEGORY_NOT_FOUND, null, LocaleContextHolder.getLocale())
                         ));
 
         categoryRepository.delete(category);

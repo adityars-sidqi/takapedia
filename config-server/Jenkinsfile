@@ -1,0 +1,165 @@
+pipeline {
+    agent any
+
+    parameters {
+        gitParameter(
+            name: 'GIT_TAG',
+            type: 'PT_TAG',
+            defaultValue: 'main',
+            description: 'Pilih tag Git untuk build',
+            tagFilter: '*',
+            selectedValue: 'DEFAULT',
+            sortMode: 'DESCENDING'
+        )
+        choice(name: 'ENV', choices: ['dev', 'staging', 'prod'], description: 'Pilih environment & Spring profile')
+    }
+
+    environment {
+        REGISTRY_CREDENTIALS = credentials('docker-registry-credentials')
+        JAVA_HOME = tool name: 'jdk-21', type: 'jdk'
+    }
+
+    tools {
+        maven 'maven-3.9.5'
+    }
+
+    options {
+        timestamps()
+        skipStagesAfterUnstable()
+    }
+
+    stages {
+        stage('Checkout Tag') {
+            steps {
+                echo "📦 Checkout Git tag: ${params.GIT_TAG}"
+                checkout([$class: 'GitSCM',
+                    branches: [[name: "refs/tags/${params.GIT_TAG}"]],
+                    userRemoteConfigs: scm.userRemoteConfigs
+                ])
+            }
+        }
+
+        stage('Extract Version from POM') {
+            steps {
+                script {
+                    def version = sh(script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
+                    env.APP_VERSION = version
+                    env.IMAGE_NAME = "takapedia/${env.JOB_NAME}:${version}"
+                    echo "📌 Version from POM: ${version}"
+                }
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                echo '⚙️ Build project...'
+                sh 'mvn clean install -DskipTests=false'
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                echo "🐳 Building Docker image: ${env.IMAGE_NAME}"
+                sh "docker build -t ${env.IMAGE_NAME} ."
+
+                echo "🚀 Pushing image to Docker registry..."
+                withDockerRegistry([credentialsId: "${REGISTRY_CREDENTIALS}", url: ""]) {
+                    sh "docker push ${env.IMAGE_NAME}"
+                }
+            }
+        }
+
+        stage('Generate Deployment YAML') {
+            steps {
+                script {
+                    def app = env.JOB_NAME
+                    def ns = params.ENV
+                    def yaml = """
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${app}
+  namespace: ${ns}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${app}
+  template:
+    metadata:
+      labels:
+        app: ${app}
+    spec:
+      containers:
+        - name: ${app}
+          image: ${env.IMAGE_NAME}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "${ns}"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${app}
+  namespace: ${ns}
+spec:
+  selector:
+    app: ${app}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+"""
+                    writeFile file: 'deployment.yaml', text: yaml
+                    echo "📄 Generated deployment.yaml with Spring profile '${ns}'"
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo "🚀 Deploying to Kubernetes namespace: ${params.ENV}"
+                sh """
+                    kubectl config use-context minikube || true
+                    kubectl create namespace ${params.ENV} --dry-run=client -o yaml | kubectl apply -f -
+                    kubectl apply -f deployment.yaml
+                    kubectl rollout status deployment/${env.JOB_NAME} -n ${params.ENV}
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Success: deployed ${env.JOB_NAME} version ${env.APP_VERSION} to ${params.ENV} (spring profile active)"
+        }
+        failure {
+            echo "❌ Build or deploy failed."
+        }
+    }
+}
