@@ -69,7 +69,7 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 echo "🐳 Building Docker image: ${env.IMAGE_NAME}"
-                sh "docker build -t ${env.IMAGE_NAME} ./config-server"
+                sh "docker build -t ${env.IMAGE_NAME} -f config-server/Dockerfile ."
 
                 echo "🚀 Pushing image to Docker registry..."
                 withDockerRegistry([credentialsId: "${REGISTRY_CREDENTIALS}", url: ""]) {
