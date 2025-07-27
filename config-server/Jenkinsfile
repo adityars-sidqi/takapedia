@@ -24,6 +24,12 @@ pipeline {
         stage('Checkout Tag') {
             steps {
                 echo "📦 Checkout Git tag: ${params.GIT_TAG}"
+                script {
+                    def result = sh(script: "git ls-remote --tags origin refs/tags/${params.GIT_TAG}", returnStatus: true)
+                    if (result != 0) {
+                        error "❌ Tag ${params.GIT_TAG} tidak ditemukan di remote repository."
+                    }
+                }
                 checkout([$class: 'GitSCM',
                     branches: [[name: "refs/tags/${params.GIT_TAG}"]],
                     userRemoteConfigs: scm.userRemoteConfigs
@@ -56,7 +62,11 @@ pipeline {
 
                 echo "🚀 Pushing image to Docker registry..."
                 withDockerRegistry([credentialsId: "${REGISTRY_CREDENTIALS}", url: ""]) {
-                    sh "docker push ${env.IMAGE_NAME}"
+                    sh '''
+                        for i in {1..3}; do
+                          docker push ${IMAGE_NAME} && break || sleep 5
+                        done
+                    '''
                 }
             }
         }
@@ -72,6 +82,10 @@ kind: Deployment
 metadata:
   name: ${app}
   namespace: ${ns}
+  labels:
+    app.kubernetes.io/name: ${app}
+    app.kubernetes.io/version: "${env.APP_VERSION}"
+    app.kubernetes.io/instance: ${app}
 spec:
   replicas: 1
   selector:
