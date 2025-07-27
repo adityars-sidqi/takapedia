@@ -2,15 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        gitParameter(
-            name: 'GIT_TAG',
-            type: 'PT_TAG',
-            defaultValue: 'main',
-            description: 'Pilih tag Git untuk build',
-            tagFilter: '*',
-            selectedValue: 'DEFAULT',
-            sortMode: 'DESCENDING'
-        )
+        string(name: 'GIT_TAG', defaultValue: 'main', description: 'Masukkan nama Git tag (misalnya: config-server-v1.0.0)')
         choice(name: 'ENV', choices: ['dev', 'staging', 'prod'], description: 'Pilih environment & Spring profile')
     }
 
@@ -42,9 +34,9 @@ pipeline {
         stage('Extract Version from POM') {
             steps {
                 script {
-                    def version = sh(script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
+                    def version = sh(script: "cd config-server && mvn help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
                     env.APP_VERSION = version
-                    env.IMAGE_NAME = "takapedia/${env.JOB_NAME}:${version}"
+                    env.IMAGE_NAME = "takapedia/config-server:${version}"
                     echo "📌 Version from POM: ${version}"
                 }
             }
@@ -53,14 +45,14 @@ pipeline {
         stage('Build & Test') {
             steps {
                 echo '⚙️ Build project...'
-                sh 'mvn clean install -DskipTests=false'
+                sh 'cd config-server && mvn clean install -DskipTests=false'
             }
         }
 
         stage('Docker Build & Push') {
             steps {
                 echo "🐳 Building Docker image: ${env.IMAGE_NAME}"
-                sh "docker build -t ${env.IMAGE_NAME} ."
+                sh "docker build -t ${env.IMAGE_NAME} ./config-server"
 
                 echo "🚀 Pushing image to Docker registry..."
                 withDockerRegistry([credentialsId: "${REGISTRY_CREDENTIALS}", url: ""]) {
@@ -72,7 +64,7 @@ pipeline {
         stage('Generate Deployment YAML') {
             steps {
                 script {
-                    def app = env.JOB_NAME
+                    def app = "config-server"
                     def ns = params.ENV
                     def yaml = """
 apiVersion: apps/v1
@@ -148,7 +140,7 @@ spec:
                     kubectl config use-context minikube || true
                     kubectl create namespace ${params.ENV} --dry-run=client -o yaml | kubectl apply -f -
                     kubectl apply -f deployment.yaml
-                    kubectl rollout status deployment/${env.JOB_NAME} -n ${params.ENV}
+                    kubectl rollout status deployment/config-server -n ${params.ENV}
                 """
             }
         }
@@ -156,7 +148,7 @@ spec:
 
     post {
         success {
-            echo "✅ Success: deployed ${env.JOB_NAME} version ${env.APP_VERSION} to ${params.ENV} (spring profile active)"
+            echo "✅ Success: deployed config-server version ${env.APP_VERSION} to ${params.ENV} (spring profile active)"
         }
         failure {
             echo "❌ Build or deploy failed."
