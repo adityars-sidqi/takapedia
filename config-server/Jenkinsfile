@@ -2,7 +2,18 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'GIT_TAG', defaultValue: 'main', description: 'Masukkan nama Git tag (misalnya: config-server-v1.0.0)')
+        gitParameter(
+            name: 'GIT_TAG',
+            type: 'PT_TAG',
+            defaultValue: '',
+            description: 'Pilih tag dari repository',
+            branch: '',
+            tagFilter: '*',
+            sortMode: 'DESCENDING_SMART',
+            selectedValue: 'NONE',
+            useRepository: 'https://github.com/adityars-sidqi/takapedia.git',
+            quickFilterEnabled: true
+        )
         choice(name: 'ENV', choices: ['dev', 'staging', 'prod'], description: 'Pilih environment & Spring profile')
     }
 
