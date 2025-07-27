@@ -52,7 +52,7 @@ pipeline {
                 script {
                     def version = sh(script: "cd config-server && mvn help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
                     env.APP_VERSION = version
-                    env.IMAGE_NAME = "takapedia/config-server:${version}"
+                    env.IMAGE_NAME = "adityars/config-server:${version}"
                     echo "📌 Version from POM: ${version}"
                 }
             }
