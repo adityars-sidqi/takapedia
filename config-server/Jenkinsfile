@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'TAG', defaultValue: '', description: 'Docker image tag (optional, will use pom.xml version if empty)')
-        choice(name: 'SPRING_PROFILE', choices: ['dev', 'staging', 'prod'], description: 'Spring profile to deploy')
+        string(name: 'IMAGE_TAG', defaultValue: '0.0.1', description: 'Docker image tag (e.g. from pom.xml)')
+        choice(name: 'SPRING_PROFILE', choices: ['dev', 'staging', 'prod'], description: 'Spring profile')
     }
 
     environment {
@@ -13,58 +13,48 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/adityars-sidqi/takapedia.git', branch: 'main'
-            }
-        }
-
-        stage('Determine Image Tag') {
-            steps {
-                script {
-                    if (params.TAG?.trim()) {
-                        env.IMAGE_TAG = params.TAG.trim()
-                        echo "Using provided tag: ${env.IMAGE_TAG}"
-                    } else {
-                        def version = sh(
-                            script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout -f config-server/pom.xml",
-                            returnStdout: true
-                        ).trim()
-                        env.IMAGE_TAG = version
-                        echo "Using version from pom.xml: ${env.IMAGE_TAG}"
-                    }
+                dir("${WORKSPACE}") {
+                    git branch: 'main', url: 'https://github.com/adityars-sidqi/takapedia.git'
                 }
             }
         }
 
         stage('Build JAR') {
-            dir("config-server") {
-                steps {
-                    sh './mvnw clean package -DskipTests'
+            steps {
+                dir('services/config-server') {
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} config-server"
-    }
-}
-
-stage('Push to Harbor') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh '''
-                echo $PASSWORD | docker login harbor.local:7777 -u $USERNAME --password-stdin
-                docker push ${IMAGE_NAME}:${IMAGE_TAG}
-            '''
+                dir('services/config-server') {
+                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                }
+            }
         }
-    }
-}
+
+        stage('Push to Harbor') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                    sh '''
+                      echo "$HARBOR_PASS" | docker login harbor.local:7777 -u "$HARBOR_USER" --password-stdin
+                      docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    '''
+                }
+            }
+        }
 
         stage('Deploy to Minikube') {
             steps {
-                sh """
-                    sed 's|__IMAGE__|${IMAGE_NAME}:${IMAGE_TAG}|g; s|__PROFILE__|${params.SPRING_PROFILE}|g' k8s/config-server.yaml | kubectl apply -f -
-                """
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+                    sh '''
+                      mkdir -p ~/.kube
+                      cp $KUBECONFIG_FILE ~/.kube/config
+                      kubectl apply -f k8s/config-server.yaml --namespace=takapedia
+                    '''
+                }
             }
         }
     }
