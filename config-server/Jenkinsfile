@@ -13,7 +13,6 @@ pipeline {
     }
 
     options {
-        timestamps()
         skipStagesAfterUnstable()
     }
 
