@@ -1,172 +1,71 @@
 pipeline {
     agent any
 
+    parameters {
+        string(name: 'TAG', defaultValue: '', description: 'Docker image tag (optional, will use pom.xml version if empty)')
+        choice(name: 'SPRING_PROFILE', choices: ['dev', 'staging', 'prod'], description: 'Spring profile to deploy')
+    }
+
     environment {
-        JAVA_HOME = tool name: 'jdk-21', type: 'jdk'
-        HARBOR_REGISTRY = 'harbor.local:7777'
-        HARBOR_PROJECT = 'takapedia'
-        DOCKER_IMAGE_NAME = "${HARBOR_REGISTRY}/${HARBOR_PROJECT}/config-server"
-    }
-
-    tools {
-        maven 'maven-3.9.11'
-    }
-
-    options {
-        skipStagesAfterUnstable()
+        IMAGE_NAME = "harbor.local:7777/takapedia/config-server"
     }
 
     stages {
-        stage('Checkout Tag') {
+        stage('Checkout') {
             steps {
-                echo "📦 Checkout Git tag: ${params.GIT_TAG}"
+                git url: 'https://github.com/adityars-sidqi/takapedia.git', branch: 'main'
+            }
+        }
+
+        stage('Determine Image Tag') {
+            steps {
                 script {
-                    def result = sh(script: "git ls-remote --tags origin refs/tags/${params.GIT_TAG}", returnStatus: true)
-                    if (result != 0) {
-                        error "❌ Tag ${params.GIT_TAG} tidak ditemukan di remote repository."
+                    if (params.TAG?.trim()) {
+                        env.IMAGE_TAG = params.TAG.trim()
+                        echo "Using provided tag: ${env.IMAGE_TAG}"
+                    } else {
+                        def version = sh(
+                            script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout -f config-server/pom.xml",
+                            returnStdout: true
+                        ).trim()
+                        env.IMAGE_TAG = version
+                        echo "Using version from pom.xml: ${env.IMAGE_TAG}"
                     }
                 }
-                checkout([$class: 'GitSCM',
-                    branches: [[name: "refs/tags/${params.GIT_TAG}"]],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/adityars-sidqi/takapedia.git',
-                        credentialsId: 'github-cred'
-                    ]]
-                ])
             }
         }
 
-        stage('Extract Version from POM') {
-            steps {
-                script {
-                    def version = sh(script: "cd config-server && mvn help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
-                    env.APP_VERSION = version
-                    env.IMAGE_NAME = "${env.DOCKER_IMAGE_NAME}:${version}"
-                    echo "📌 Version from POM: ${version}"
+        stage('Build JAR') {
+            dir("config-server") {
+                steps {
+                    sh './mvnw clean package -DskipTests'
                 }
             }
         }
 
-        stage('Build & Test') {
+        stage('Build Docker Image') {
             steps {
-                echo '⚙️ Build project...'
-                withEnv(["JAVA_HOME=${env.JAVA_HOME}", "PATH=${env.JAVA_HOME}/bin:$PATH"]) {
-                    sh 'cd config-server && mvn clean install -DskipTests=false'
-                }
-            }
-        }
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} config-server"
+    }
+}
 
-        stage('Docker Build & Push') {
+stage('Push to Harbor') {
             steps {
-                echo "🐳 Building Docker image: ${env.IMAGE_NAME}"
-                sh "docker build -t ${env.IMAGE_NAME} -f config-server/Dockerfile ."
-
-                echo "🔐 Login ke Harbor..."
-                withCredentials([usernamePassword(credentialsId: 'harbor-cred', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                     sh '''
-                        echo "$HARBOR_PASS" | docker login ${HARBOR_REGISTRY} -u "$HARBOR_USER" --password-stdin
-                        docker push ${IMAGE_NAME}
-                    '''
-                }
-            }
-        }
-
-        stage('Generate Deployment YAML') {
-            steps {
-                script {
-                    def app = "config-server"
-                    def ns = params.ENV
-                    def yaml = """
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ${app}
-  namespace: ${ns}
-  labels:
-    app.kubernetes.io/name: ${app}
-    app.kubernetes.io/version: "${env.APP_VERSION}"
-    app.kubernetes.io/instance: ${app}
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: ${app}
-  template:
-    metadata:
-      labels:
-        app: ${app}
-    spec:
-      containers:
-        - name: ${app}
-          image: ${env.IMAGE_NAME}
-          ports:
-            - containerPort: 8080
-          env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: "${ns}"
-          readinessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
-          livenessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 20
-            timeoutSeconds: 5
-            failureThreshold: 5
-          resources:
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
-            requests:
-              memory: "256Mi"
-              cpu: "250m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ${app}
-  namespace: ${ns}
-spec:
-  selector:
-    app: ${app}
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
-"""
-                    writeFile file: 'deployment.yaml', text: yaml
-                    echo "📄 Generated deployment.yaml with Spring profile '${ns}'"
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                echo "🚀 Deploying to Kubernetes namespace: ${params.ENV}"
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    sh """
-                        kubectl --kubeconfig=$KUBECONFIG create namespace ${params.ENV} --dry-run=client -o yaml | kubectl apply -f -
-                        kubectl --kubeconfig=$KUBECONFIG apply -f deployment.yaml
-                        kubectl --kubeconfig=$KUBECONFIG rollout status deployment/config-server -n ${params.ENV}
-                    """
-                }
-            }
+                echo $PASSWORD | docker login harbor.local:7777 -u $USERNAME --password-stdin
+                docker push ${IMAGE_NAME}:${IMAGE_TAG}
+            '''
         }
     }
+}
 
-    post {
-        success {
-            echo "✅ Success: deployed config-server version ${env.APP_VERSION} to ${params.ENV} (spring profile active)"
-        }
-        failure {
-            echo "❌ Build or deploy failed."
+        stage('Deploy to Minikube') {
+            steps {
+                sh """
+                    sed 's|__IMAGE__|${IMAGE_NAME}:${IMAGE_TAG}|g; s|__PROFILE__|${params.SPRING_PROFILE}|g' k8s/config-server.yaml | kubectl apply -f -
+                """
+            }
         }
     }
 }

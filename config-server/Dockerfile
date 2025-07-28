@@ -1,12 +1,14 @@
-# Stage 1: Build
-FROM maven:3-eclipse-temurin-21-alpine AS build
-WORKDIR /app
-COPY . /app
-WORKDIR /app/config-server
-RUN mvn clean package -DskipTests
+# Gunakan base image JDK 21
+FROM eclipse-temurin:21-jdk-alpine
 
-# Stage 2: Run
-FROM eclipse-temurin:21-jre-alpine
+# Set direktori kerja di dalam container
 WORKDIR /app
-COPY --from=build /app/config-server/target/*.jar app.jar
+
+# Copy file JAR hasil build Maven
+COPY target/config-server-*.jar app.jar
+
+# Expose port default Spring Boot
+EXPOSE 8080
+
+# Jalankan aplikasi
 ENTRYPOINT ["java", "-jar", "app.jar"]
