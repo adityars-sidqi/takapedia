@@ -46,9 +46,13 @@ pipeline {
 
         stage('Deploy to Minikube') {
             steps {
-                sh '''
-                  kubectl apply -f k8s/config-server.yaml --namespace=takapedia
-                '''
+                withCredentials([file(credentialsId: 'kubeconfig-takapedia', variable: 'KUBECONFIG_FILE')]) {
+                    sh '''
+                        mkdir -p /root/.kube
+                        cp $KUBECONFIG_FILE /root/.kube/config
+                        kubectl apply -f k8s/config-server.yaml --namespace=takapedia
+                    '''
+                }
             }
         }
     }
