@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>config-server</artifactId>
-    <version>1.0.14</version>
+    <version>1.0.15</version>
     <name>config-server</name>
     <description>config-server</description>
     <dependencies>

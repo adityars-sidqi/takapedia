@@ -29,7 +29,10 @@ pipeline {
                 }
                 checkout([$class: 'GitSCM',
                     branches: [[name: "refs/tags/${params.GIT_TAG}"]],
-                    userRemoteConfigs: scm.userRemoteConfigs
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/adityar-sidqi/takapedia.git',
+                        credentialsId: 'github-cred'
+                    ]]
                 ])
             }
         }
@@ -58,7 +61,7 @@ pipeline {
                 sh "docker build -t ${env.IMAGE_NAME} -f config-server/Dockerfile ."
 
                 echo "🔐 Login ke Harbor..."
-                withCredentials([usernamePassword(credentialsId: 'harbor-credentials', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'harbor-cred', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                     sh '''
                         echo "$HARBOR_PASS" | docker login ${HARBOR_REGISTRY} -u "$HARBOR_USER" --password-stdin
                         docker push ${IMAGE_NAME}
@@ -146,12 +149,13 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 echo "🚀 Deploying to Kubernetes namespace: ${params.ENV}"
-                sh """
-                    kubectl config use-context minikube || true
-                    kubectl create namespace ${params.ENV} --dry-run=client -o yaml | kubectl apply -f -
-                    kubectl apply -f deployment.yaml
-                    kubectl rollout status deployment/config-server -n ${params.ENV}
-                """
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh """
+                        kubectl --kubeconfig=$KUBECONFIG create namespace ${params.ENV} --dry-run=client -o yaml | kubectl apply -f -
+                        kubectl --kubeconfig=$KUBECONFIG apply -f deployment.yaml
+                        kubectl --kubeconfig=$KUBECONFIG rollout status deployment/config-server -n ${params.ENV}
+                    """
+                }
             }
         }
     }
