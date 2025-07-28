@@ -13,15 +13,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                dir("${WORKSPACE}") {
-                    git branch: 'main', url: 'https://github.com/adityars-sidqi/takapedia.git'
-                }
+                git branch: 'master', url: 'https://github.com/adityars-sidqi/takapedia.git'
             }
         }
 
         stage('Build JAR') {
             steps {
-                dir('services/config-server') {
+                dir('config-server') {
                     sh 'mvn clean package -DskipTests'
                 }
             }
@@ -29,7 +27,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                dir('services/config-server') {
+                dir('config-server') {
                     sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
                 }
             }
