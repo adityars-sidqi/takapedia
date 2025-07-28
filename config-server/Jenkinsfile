@@ -1,23 +1,6 @@
 pipeline {
     agent any
 
-    parameters {
-        gitParameter(
-            name: 'GIT_TAG',
-            type: 'PT_TAG',
-            defaultValue: '',
-            description: 'Pilih tag dari repository',
-            branch: '',
-            tagFilter: '*',
-            sortMode: 'DESCENDING_SMART',
-            selectedValue: 'NONE',
-            useRepository: 'https://github.com/adityars-sidqi/takapedia.git',
-            credentialsId: 'github-credentials',
-            quickFilterEnabled: true
-        )
-        choice(name: 'ENV', choices: ['dev', 'staging', 'prod'], description: 'Pilih environment & Spring profile')
-    }
-
     environment {
         JAVA_HOME = tool name: 'jdk-21', type: 'jdk'
         HARBOR_REGISTRY = 'harbor.local:7777'
