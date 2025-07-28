@@ -50,7 +50,9 @@ pipeline {
         stage('Build & Test') {
             steps {
                 echo '⚙️ Build project...'
-                sh 'cd config-server && mvn clean install -DskipTests=false'
+                withEnv(["JAVA_HOME=${env.JAVA_HOME}", "PATH=${env.JAVA_HOME}/bin:$PATH"]) {
+                    sh 'cd config-server && mvn clean install -DskipTests=false'
+                }
             }
         }
 
