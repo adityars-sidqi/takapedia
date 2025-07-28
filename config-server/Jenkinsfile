@@ -29,7 +29,7 @@ pipeline {
                 checkout([$class: 'GitSCM',
                     branches: [[name: "refs/tags/${params.GIT_TAG}"]],
                     userRemoteConfigs: [[
-                        url: 'https://github.com/adityar-sidqi/takapedia.git',
+                        url: 'https://github.com/adityars-sidqi/takapedia.git',
                         credentialsId: 'github-cred'
                     ]]
                 ])
