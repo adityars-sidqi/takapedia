@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            label 'kaniko'
+            defaultContainer 'maven'
+        }
+    }
 
     parameters {
         string(name: 'IMAGE_TAG', defaultValue: '0.0.1', description: 'Docker image tag (e.g. from pom.xml)')
@@ -26,12 +31,6 @@ pipeline {
         }
 
         stage('Build & Push Image with Kaniko') {
-            agent {
-                kubernetes {
-                    label 'kaniko'
-                    defaultContainer 'kaniko'
-                }
-            }
             steps {
                 dir('config-server') {
                     container('kaniko') {
