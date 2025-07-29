@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = "harbor.local:7777/takapedia/config-server"
+        IMAGE_NAME = "harbor.takapedia.local:7777/takapedia/config-server"
     }
 
     stages {
@@ -25,21 +25,26 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                dir('config-server') {
-                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+        stage('Build & Push Image with Kaniko') {
+            agent {
+                kubernetes {
+                    label 'kaniko'
+                    defaultContainer 'kaniko'
                 }
             }
-        }
-
-        stage('Push to Harbor') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
-                    sh '''
-                      echo "$HARBOR_PASS" | docker login harbor.local:7777 -u "$HARBOR_USER" --password-stdin
-                      docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                    '''
+                dir('config-server') {
+                    container('kaniko') {
+                        sh '''
+                        /kaniko/executor \
+                          --context `pwd` \
+                          --dockerfile `pwd`/Dockerfile \
+                          --destination harbor.takapedia.local:7777/takapedia/config-server:${IMAGE_TAG} \
+                          --insecure \
+                          --skip-tls-verify \
+                          --verbosity info
+                        '''
+                    }
                 }
             }
         }
