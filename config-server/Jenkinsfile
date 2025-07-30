@@ -1,30 +1,5 @@
 pipeline {
-  agent {
-        kubernetes {
-            label 'config-server-agent'
-      yaml """
-apiVersion: v1
-kind: Pod
-spec:
-  containers:
-    - name: maven
-      image: maven:3.9.6-eclipse-temurin-21-alpine
-      command: ['cat']
-      tty: true
-    - name: docker
-      image: docker:24.0.6-cli
-      tty: true
-      args: ['dockerd','--registry-mirror=http://harbor.local', '--insecure-registry=harbor.local']
-      volumeMounts:
-        - name: docker-sock
-          mountPath: /var/run/docker.sock
-  volumes:
-    - name: docker-sock
-      hostPath:
-        path: /var/run/docker.sock
-"""
-    }
-  }
+    agent { label 'takapedia-java'}
 
     environment {
         IMAGE_NAME = "harbor.local/takapedia/config-server"
@@ -40,37 +15,31 @@ spec:
 
         stage('Build JAR') {
             steps {
-                container('maven') {
-                    dir('config-server') {
-                        sh 'mvn clean package -DskipTests'
-                    }
+                dir('config-server') {
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                container('docker') {
-                    dir('config-server') {
-                        sh """
-                        docker build -t $IMAGE_NAME:$TAG .
-                        docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest
-                    """
-                    }
+                dir('config-server') {
+                    sh """
+                    docker build -t $IMAGE_NAME:$TAG .
+                    docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest
+                """
                 }
             }
         }
 
         stage('Push to Harbor') {
             steps {
-                container('docker') {
-                    withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
-                        sh """
-                            echo "$HARBOR_PASS" | docker login harbor.local -u "$HARBOR_USER" --password-stdin
-                            docker push $IMAGE_NAME:$TAG
-                            docker push $IMAGE_NAME:latest
-                        """
-                    }
+                withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                    sh """
+                        echo "$HARBOR_PASS" | docker login harbor.local -u "$HARBOR_USER" --password-stdin
+                        docker push $IMAGE_NAME:$TAG
+                        docker push $IMAGE_NAME:latest
+                    """
                 }
             }
         }
