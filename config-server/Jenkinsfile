@@ -32,7 +32,7 @@ spec:
   volumes:
     - name: kaniko-secret
       secret:
-        secretName: regcred
+        secretName: kaniko-secret
 """
         }
     }
