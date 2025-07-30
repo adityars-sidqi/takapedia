@@ -50,23 +50,27 @@ spec:
 
         stage('Build Docker Image') {
             steps {
-                dir('config-server') {
-                    sh """
+                container('docker') {
+                    dir('config-server') {
+                        sh """
                         docker build -t $IMAGE_NAME:$TAG .
                         docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest
                     """
+                    }
                 }
             }
         }
 
         stage('Push to Harbor') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
-                    sh """
-                        echo "$HARBOR_PASS" | docker login harbor.local -u "$HARBOR_USER" --password-stdin
-                        docker push $IMAGE_NAME:$TAG
-                        docker push $IMAGE_NAME:latest
-                    """
+                container('docker') {
+                    withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                        sh """
+                            echo "$HARBOR_PASS" | docker login harbor.local -u "$HARBOR_USER" --password-stdin
+                            docker push $IMAGE_NAME:$TAG
+                            docker push $IMAGE_NAME:latest
+                        """
+                    }
                 }
             }
         }
