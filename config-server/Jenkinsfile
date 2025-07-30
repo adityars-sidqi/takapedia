@@ -1,9 +1,39 @@
 pipeline {
     agent {
         kubernetes {
-            label 'kaniko'
-            defaultContainer 'maven'
-            yamlFile 'kaniko/kaniko-pod.yaml'
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: kaniko-build
+spec:
+  containers:
+    - name: maven
+      image: maven:3.9.6-eclipse-temurin-17
+      command: ['cat']
+      tty: true
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:latest
+      command: ["/kaniko/executor"]
+      args:
+        - "--dockerfile=/workspace/Dockerfile"
+        - "--context=dir:///workspace"
+        - "--destination=harbor.local/takapedia/config-server:\${GIT_TAG}"
+        - "--insecure"
+        - "--insecure-push"
+        - "--skip-tls-verify"
+        - "--skip-tls-verify-pull"
+        - "--cache=true"
+        - "--cache-dir=/cache"
+      volumeMounts:
+        - name: kaniko-secret
+          mountPath: /kaniko/.docker
+  volumes:
+    - name: kaniko-secret
+      secret:
+        secretName: regcred
+"""
         }
     }
 
@@ -35,27 +65,8 @@ pipeline {
             steps {
                 dir('config-server') {
                     container('kaniko') {
-                        script {
-                            def resolvedTag = params.GIT_TAG?.trim()
-                            if (!resolvedTag) {
-                                resolvedTag = sh(
-                                    script: "git describe --tags --abbrev=0 || echo snapshot",
-                                    returnStdout: true
-                                ).trim()
-                            }
-
-                            def imageWithTag = "${IMAGE_NAME}:${resolvedTag}"
-
-                            sh """
-                                /kaniko/executor \
-                                  --context `pwd` \
-                                  --dockerfile `pwd`/Dockerfile \
-                                  --destination ${imageWithTag} \
-                                  --insecure \
-                                  --skip-tls-verify \
-                                  --verbosity info
-                            """
-                        }
+                        // Kaniko arg sudah otomatis jalan dari podTemplate
+                        echo "Image build with tag: ${params.TAG_NAME}"
                     }
                 }
             }
