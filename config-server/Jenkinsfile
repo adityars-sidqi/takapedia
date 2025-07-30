@@ -37,8 +37,10 @@ spec:
 
         stage('Build JAR') {
             steps {
-                dir('config-server') {
-                    sh 'mvn clean package -DskipTests'
+                container('maven') {
+                    dir('config-server') {
+                        sh 'mvn clean package -DskipTests'
+                    }
                 }
             }
         }
