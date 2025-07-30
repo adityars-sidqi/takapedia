@@ -1,5 +1,5 @@
 pipeline {
-    agent {
+  agent {
         kubernetes {
             label 'config-server-agent'
       yaml """
@@ -9,8 +9,11 @@ spec:
   containers:
     - name: maven
       image: maven:3.9.6-eclipse-temurin-21-alpine
-      command:
-        - cat
+      command: ['cat']
+      tty: true
+    - name: docker
+      image: docker:24.0.6-cli
+      command: ['cat']
       tty: true
       volumeMounts:
         - name: docker-sock
