@@ -1,55 +1,15 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml """
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    jenkins: kaniko-build
-spec:
-  containers:
-    - name: maven
-      image: maven:3.9-eclipse-temurin-21-alpine
-      command: ['cat']
-      tty: true
-    - name: kaniko
-      image: gcr.io/kaniko-project/executor:latest
-      command: ["/kaniko/executor"]
-      args:
-        - "--dockerfile=/workspace/Dockerfile"
-        - "--context=dir:///workspace"
-        - "--destination=harbor.local/takapedia/config-server:\${GIT_TAG}"
-        - "--insecure"
-        - "--insecure-push"
-        - "--skip-tls-verify"
-        - "--skip-tls-verify-pull"
-        - "--cache=true"
-        - "--cache-dir=/cache"
-      volumeMounts:
-        - name: kaniko-secret
-          mountPath: /kaniko/.docker
-  volumes:
-    - name: kaniko-secret
-      secret:
-        secretName: kaniko-secret
-"""
-        }
-    }
-
-    parameters {
-        choice(name: 'SPRING_PROFILE', choices: ['dev', 'staging', 'prod'], description: 'Spring profile')
-        string(name: 'GIT_TAG', defaultValue: '', description: 'Git tag for image versioning (leave empty to auto-detect)')
-    }
+    agent any
 
     environment {
         IMAGE_NAME = "harbor.local/takapedia/config-server"
+        TAG = "${env.BUILD_NUMBER}"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/adityars-sidqi/takapedia.git'
+                checkout scm
             }
         }
 
@@ -61,23 +21,32 @@ spec:
             }
         }
 
-        stage('Build & Push Image with Kaniko') {
+        stage('Build Docker Image') {
             steps {
                 dir('config-server') {
-                    container('kaniko') {
-                        // Kaniko arg sudah otomatis jalan dari podTemplate
-                        echo "Image build with tag: ${params.TAG_NAME}"
-                    }
+                    sh """
+                        docker build -t $IMAGE_NAME:$TAG .
+                        docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest
+                    """
                 }
             }
         }
 
-        stage('Deploy to Kubernetes (Docker Desktop)') {
+        stage('Push to Harbor') {
             steps {
-                sh '''
-                    export KUBECONFIG=$KUBECONFIG_FILE
-                    kubectl apply -f k8s/config-server.yaml --namespace=takapedia
-                '''
+                withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                    sh """
+                        echo "$HARBOR_PASS" | docker login harbor.local -u "$HARBOR_USER" --password-stdin
+                        docker push $IMAGE_NAME:$TAG
+                        docker push $IMAGE_NAME:latest
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh 'kubectl apply -f k8s/config-server-deployment.yaml'
             }
         }
     }

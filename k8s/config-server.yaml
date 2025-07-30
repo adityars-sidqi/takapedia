@@ -2,8 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: config-server
-  labels:
-    app: config-server
+  namespace: takapedia
 spec:
   replicas: 1
   selector:
@@ -16,17 +15,15 @@ spec:
     spec:
       containers:
         - name: config-server
-          image: __IMAGE__   # Akan diisi oleh Jenkins
+          image: harbor.local/takapedia/config-server:latest
           ports:
             - containerPort: 8080
-          env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: "__PROFILE__"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: config-server
+  namespace: takapedia
 spec:
   selector:
     app: config-server
