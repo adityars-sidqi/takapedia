@@ -3,22 +3,23 @@ pipeline {
         kubernetes {
             label 'kaniko'
             defaultContainer 'maven'
+            yamlFile 'kaniko/kaniko-pod.yaml'
         }
     }
 
     parameters {
-        string(name: 'IMAGE_TAG', defaultValue: '0.0.1', description: 'Docker image tag (e.g. from pom.xml)')
         choice(name: 'SPRING_PROFILE', choices: ['dev', 'staging', 'prod'], description: 'Spring profile')
+        string(name: 'GIT_TAG', defaultValue: '', description: 'Git tag for image versioning (leave empty to auto-detect)')
     }
 
     environment {
-        IMAGE_NAME = "harbor.takapedia.local:7777/takapedia/config-server"
+        IMAGE_NAME = "harbor.local/takapedia/config-server"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/adityars-sidqi/takapedia.git'
+                git url: 'https://github.com/adityars-sidqi/takapedia.git'
             }
         }
 
@@ -34,28 +35,40 @@ pipeline {
             steps {
                 dir('config-server') {
                     container('kaniko') {
-                        sh '''
-                        /kaniko/executor \
-                          --context `pwd` \
-                          --dockerfile `pwd`/Dockerfile \
-                          --destination harbor.takapedia.local:7777/takapedia/config-server:${IMAGE_TAG} \
-                          --insecure \
-                          --skip-tls-verify \
-                          --verbosity info
-                        '''
+                        script {
+                            def resolvedTag = params.GIT_TAG?.trim()
+                            if (!resolvedTag) {
+                                resolvedTag = sh(
+                                    script: "git describe --tags --abbrev=0 || echo snapshot",
+                                    returnStdout: true
+                                ).trim()
+                            }
+
+                            def imageWithTag = "${IMAGE_NAME}:${resolvedTag}"
+                            def imageLatest = "${IMAGE_NAME}:latest"
+
+                            sh """
+                                /kaniko/executor \
+                                  --context `pwd` \
+                                  --dockerfile `pwd`/Dockerfile \
+                                  --destination ${imageWithTag} \
+                                  --destination ${imageLatest} \
+                                  --insecure \
+                                  --skip-tls-verify \
+                                  --verbosity info
+                            """
+                        }
                     }
                 }
             }
         }
 
-        stage('Deploy to Minikube') {
+        stage('Deploy to Kubernetes (Docker Desktop)') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-takapedia', variable: 'KUBECONFIG_FILE')]) {
-                    sh '''
-                        export KUBECONFIG=$KUBECONFIG_FILE
-                        kubectl apply -f k8s/config-server.yaml --namespace=takapedia
-                    '''
-                }
+                sh '''
+                    export KUBECONFIG=$KUBECONFIG_FILE
+                    kubectl apply -f k8s/config-server.yaml --namespace=takapedia
+                '''
             }
         }
     }
