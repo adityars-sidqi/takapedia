@@ -15,7 +15,15 @@ spec:
           mountPath: /root/.m2
     - name: kaniko
       image: gcr.io/kaniko-project/executor:latest
-      command: []
+      command:
+        - /kaniko/executor
+      args:
+        - --context=dir:///workspace
+        - --dockerfile=/workspace/Dockerfile
+        - --destination=harbor.local/takapedia/config-server:latest
+        - --insecure
+        - --skip-tls-verify
+        - --verbosity=info
       volumeMounts:
         - name: kaniko-secret
           mountPath: /kaniko/.docker
