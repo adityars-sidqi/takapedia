@@ -1,10 +1,27 @@
 pipeline {
     agent {
-        docker {
-            image 'maven:3.9.6-eclipse-temurin-21-alpine'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
+        kubernetes {
+            label 'config-server-agent'
+      yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: maven
+      image: maven:3.9.6-eclipse-temurin-17
+      command:
+        - cat
+      tty: true
+      volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+  volumes:
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+"""
     }
+  }
 
     environment {
         IMAGE_NAME = "harbor.local/takapedia/config-server"
