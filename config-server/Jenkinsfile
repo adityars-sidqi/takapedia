@@ -45,14 +45,12 @@ pipeline {
                             }
 
                             def imageWithTag = "${IMAGE_NAME}:${resolvedTag}"
-                            def imageLatest = "${IMAGE_NAME}:latest"
 
                             sh """
                                 /kaniko/executor \
                                   --context `pwd` \
                                   --dockerfile `pwd`/Dockerfile \
                                   --destination ${imageWithTag} \
-                                  --destination ${imageLatest} \
                                   --insecure \
                                   --skip-tls-verify \
                                   --verbosity info
