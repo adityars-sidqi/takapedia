@@ -3,6 +3,7 @@ package com.rahman.productservice.controller;
 import com.rahman.commonlib.ApiResponse;
 import com.rahman.productservice.dto.tag.CreateTagRequest;
 import com.rahman.productservice.dto.tag.TagResponse;
+import com.rahman.productservice.dto.tag.UpdateTagRequest;
 import com.rahman.productservice.service.TagService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -33,6 +34,12 @@ public class TagController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<TagResponse> save(@RequestBody CreateTagRequest  createTagRequest) {
         return ApiResponse.success(tagService.save(createTagRequest));
+    }
+
+    @PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<TagResponse> update(@PathVariable("id") UUID id, @RequestBody UpdateTagRequest updateTagRequest) {
+        return ApiResponse.success(tagService.update(id, updateTagRequest));
     }
 
     @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)

@@ -7,4 +7,5 @@ public class MessagesCodeConstant {
     }
 
     public static final String CATEGORY_NOT_FOUND = "category.not_found";
+    public static final String TAG_NOT_FOUND = "tag.not_found";
 }

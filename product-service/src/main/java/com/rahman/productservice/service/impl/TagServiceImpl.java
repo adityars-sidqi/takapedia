@@ -2,6 +2,7 @@ package com.rahman.productservice.service.impl;
 
 import com.rahman.productservice.dto.tag.CreateTagRequest;
 import com.rahman.productservice.dto.tag.TagResponse;
+import com.rahman.productservice.dto.tag.UpdateTagRequest;
 import com.rahman.productservice.entity.Tag;
 import com.rahman.productservice.exception.ResourceNotFoundException;
 import com.rahman.productservice.mapper.TagMapper;
@@ -15,7 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+
+import static com.rahman.productservice.constants.MessagesCodeConstant.TAG_NOT_FOUND;
 
 @Service
 public class TagServiceImpl implements TagService {
@@ -47,6 +51,25 @@ public class TagServiceImpl implements TagService {
         Tag tag = tagMapper.mapToEntity(createTagRequest);
         Tag tagSaved = tagRepository.save(tag);
         return tagMapper.toResponse(tagSaved);
+    }
+
+    @Override
+    public TagResponse update(UUID id, UpdateTagRequest updateTagRequest) {
+        validationService.validate(updateTagRequest);
+
+        Tag tag = tagRepository.findById(id).orElseThrow(() ->
+                new ResourceNotFoundException(
+                        messageSource.getMessage(TAG_NOT_FOUND, null, LocaleContextHolder.getLocale())
+                ));
+
+        // Update name jika tidak null dan tidak kosong
+        Optional.ofNullable(updateTagRequest.name())
+                .filter(name -> !name.isBlank())
+                .ifPresent(tag::setName);
+
+        Tag updated  = tagRepository.save(tag);
+
+        return tagMapper.toResponse(updated);
     }
 
     @Override

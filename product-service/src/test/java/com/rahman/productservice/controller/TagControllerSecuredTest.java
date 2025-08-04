@@ -3,6 +3,7 @@ package com.rahman.productservice.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rahman.productservice.ProductServiceApplication;
 import com.rahman.productservice.dto.tag.CreateTagRequest;
+import com.rahman.productservice.dto.tag.UpdateTagRequest;
 import com.rahman.productservice.entity.Tag;
 import com.rahman.productservice.repository.TagRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,8 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(
@@ -96,6 +96,42 @@ class TagControllerSecuredTest {
 
         mockMvc.perform(delete("/tag/" + id)
                         .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "user", roles = "USER")
+    void testUpdateTag_WhenRoleIsUser_ReturnsBadRequest() throws Exception {
+        //Prepare data
+        Tag tag = new Tag();
+        tag.setName("Makeup");
+        Tag tagSaved = tagRepository.save(tag);
+        UUID id = tagSaved.getId();
+
+        UpdateTagRequest request = new UpdateTagRequest("Makeup");
+
+
+        mockMvc.perform(patch("/tag/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testUpdateTag_WhenNotAuthenticated_ReturnsUnauthorized() throws Exception {
+        //Prepare data
+        Tag tag = new Tag();
+        tag.setName("Makeup");
+        Tag tagSaved = tagRepository.save(tag);
+        UUID id = tagSaved.getId();
+
+
+        UpdateTagRequest request = new UpdateTagRequest("Makeup");
+
+
+        mockMvc.perform(patch("/tag/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
     }
 

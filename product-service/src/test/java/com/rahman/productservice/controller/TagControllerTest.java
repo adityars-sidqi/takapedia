@@ -3,6 +3,7 @@ package com.rahman.productservice.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rahman.productservice.dto.tag.CreateTagRequest;
 import com.rahman.productservice.dto.tag.TagResponse;
+import com.rahman.productservice.dto.tag.UpdateTagRequest;
 import com.rahman.productservice.entity.Tag;
 import com.rahman.productservice.exception.ResourceNotFoundException;
 import com.rahman.productservice.mapper.TagMapper;
@@ -128,6 +129,47 @@ class TagControllerTest {
         verify(tagService).deleteById(id);
     }
 
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testUpdate_ReturnSuccess() throws Exception {
+        UUID id = UUID.randomUUID();
+        UpdateTagRequest request = new UpdateTagRequest("Makeup");
+        Tag tagData = new Tag();
+        tagData.setId(id);
+        tagData.setName("Makeup");
+
+        when(tagService.update(any(UUID.class), any(UpdateTagRequest.class))).thenReturn(tagMapper.toResponse(tagData));
+
+        mockMvc.perform(patch("/tag/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("success")))
+                .andExpect(jsonPath("$.data.id", is(id.toString())))
+                .andExpect(jsonPath("$.data.name", is("Makeup")));
+
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testUpdate_WhenIdNotFound_ReturnNotFound() throws Exception {
+        UUID id = UUID.randomUUID();
+        UpdateTagRequest request = new UpdateTagRequest("Makeup");
+
+        doThrow(new ResourceNotFoundException(messageSource.getMessage("tag.not_found", null, LocaleContextHolder.getLocale())))
+                .when(tagService).update(any(UUID.class), any(UpdateTagRequest.class));
+
+        mockMvc.perform(patch("/tag/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.message", is("Tag not found.")))
+                .andExpect(jsonPath("$.data").value(Matchers.nullValue()));
+
+        verify(tagService).update(id, request);
+    }
 
 
 }
