@@ -26,8 +26,8 @@ pipeline {
         stage('Validate Parameters') {
             steps {
                 script {
-                    if (!params.VERSION?.trim()) {
-                        error "VERSION parameter is required"
+                    if (!params.GIT_TAG?.trim()) {
+                        error "GIT_TAG parameter is required"
                     }
                 }
             }
