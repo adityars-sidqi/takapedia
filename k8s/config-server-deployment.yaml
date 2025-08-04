@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: config-server
-          image: harbor.local/takapedia/config-server:latest
+          image: harbor.local:7777/takapedia/config-server:latest
           ports:
             - containerPort: 8080
 ---
