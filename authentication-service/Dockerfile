@@ -1,14 +1,14 @@
-# Stage 1: Build
-FROM maven:3-eclipse-temurin-21-alpine AS build
-WORKDIR /app
-COPY . .
-WORKDIR /app/authentication-service
-RUN mvn clean package -DskipTests
+# Gunakan base image JDK 21
+FROM eclipse-temurin:21-jdk-alpine
 
-# Stage 2: Run
-FROM eclipse-temurin:21-jre-alpine
+# Set direktori kerja di dalam container
 WORKDIR /app
-# Salin jar dari stage build
-COPY --from=build /app/authentication-service/target/*.jar app.jar
 
+# Copy file JAR hasil build Maven
+COPY target/authentication-service-*.jar app.jar
+
+# Expose port default Spring Boot
+EXPOSE 8080
+
+# Jalankan aplikasi
 ENTRYPOINT ["java", "-jar", "app.jar"]
