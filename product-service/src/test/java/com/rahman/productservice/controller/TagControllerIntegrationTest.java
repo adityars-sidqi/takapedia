@@ -4,6 +4,7 @@ import com.rahman.commonlib.ApiResponse;
 import com.rahman.productservice.ProductServiceApplication;
 import com.rahman.productservice.dto.tag.CreateTagRequest;
 import com.rahman.productservice.dto.tag.TagResponse;
+import com.rahman.productservice.dto.tag.UpdateTagRequest;
 import com.rahman.productservice.entity.Tag;
 import com.rahman.productservice.repository.TagRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -212,6 +213,104 @@ class TagControllerIntegrationTest {
         ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
                 baseUrl + "/" +  id,
                 HttpMethod.DELETE,
+                entity,
+                new ParameterizedTypeReference<>() {}
+        );
+
+        // Validasi response
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().success()).isFalse();
+        assertThat(response.getBody().message()).isNotEmpty();
+        assertThat(response.getBody().message()).isEqualTo("Tag not found.");
+        assertThat(response.getBody().data()).isNull();
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testUpdateTag_ReturnsSuccess() {
+
+        //Prepare data
+        Tag tag = new Tag();
+        tag.setName("Makeup");
+        Tag tagSaved = tagRepository.save(tag);
+        UUID id = tagSaved.getId();
+
+        UpdateTagRequest request = new UpdateTagRequest("Elektronik");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<UpdateTagRequest> entity = new HttpEntity<>(request, headers);
+
+        // Execute
+        ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                baseUrl + "/" +  id,
+                HttpMethod.PATCH,
+                entity,
+                new ParameterizedTypeReference<>() {}
+        );
+
+        // Validasi response
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().success()).isTrue();
+        assertThat(response.getBody().message()).isNotEmpty();
+        assertThat(response.getBody().message()).isEqualTo("success");
+        assertThat(response.getBody().data()).isNotNull();
+        assertThat(response.getBody().data().name()).isEqualTo("Elektronik");
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testUpdateTag_WhenNameIsBlank_ReturnsBadRequest() {
+        //Prepare data
+        Tag tag = new Tag();
+        tag.setName("Makeup");
+        Tag tagSaved = tagRepository.save(tag);
+        UUID id = tagSaved.getId();
+
+        UpdateTagRequest request = new UpdateTagRequest("");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<UpdateTagRequest> entity = new HttpEntity<>(request, headers);
+
+        // Execute
+        ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                baseUrl + "/" +  id,
+                HttpMethod.PATCH,
+                entity,
+                new ParameterizedTypeReference<>() {}
+        );
+
+        // Validasi response
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().success()).isFalse();
+        assertThat(response.getBody().message()).isNotEmpty();
+        assertThat(response.getBody().message()).isEqualTo("name: Tag name is required");
+        assertThat(response.getBody().data()).isNull();
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testUpdateTag_NotFound() {
+
+        UUID id = UUID.randomUUID();
+
+        UpdateTagRequest request = new UpdateTagRequest("Elektronik");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<UpdateTagRequest> entity = new HttpEntity<>(request, headers);
+
+        // Execute
+        ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                baseUrl + "/" +  id,
+                HttpMethod.PATCH,
                 entity,
                 new ParameterizedTypeReference<>() {}
         );
