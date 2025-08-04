@@ -1,15 +1,27 @@
 pipeline {
-    agent { label 'takapedia-java'}
+    agent { label 'takapedia-java' }
 
     environment {
         IMAGE_NAME = "harbor.local:7777/takapedia/config-server"
-        TAG = "${env.BUILD_NUMBER}"
     }
 
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    if (!params.VERSION?.trim()) {
+                        error "VERSION parameter is required"
+                    }
+                    if (!params.SPRING_PROFILE?.trim()) {
+                        error "SPRING_PROFILE parameter is required"
+                    }
+                }
             }
         }
 
@@ -24,10 +36,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir('config-server') {
-                    sh """
-                    docker build -t $IMAGE_NAME:$TAG .
-                    docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest
-                """
+                    sh "docker build -t $IMAGE_NAME:${params.VERSION} ."
                 }
             }
         }
@@ -37,8 +46,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                     sh """
                         echo "$HARBOR_PASS" | docker login harbor.local:7777 -u "$HARBOR_USER" --password-stdin
-                        docker push $IMAGE_NAME:$TAG
-                        docker push $IMAGE_NAME:latest
+                        docker push $IMAGE_NAME:${params.VERSION}
                     """
                 }
             }
@@ -46,7 +54,46 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh 'kubectl apply -f k8s/config-server-deployment.yaml'
+                sh """
+                cat <<EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-server
+  namespace: takapedia
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-server
+  template:
+    metadata:
+      labels:
+        app: config-server
+    spec:
+      containers:
+        - name: config-server
+          image: $IMAGE_NAME:${params.VERSION}
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "${params.SPRING_PROFILE}"
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-server
+  namespace: takapedia
+spec:
+  selector:
+    app: config-server
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+EOF
+                """
             }
         }
     }
