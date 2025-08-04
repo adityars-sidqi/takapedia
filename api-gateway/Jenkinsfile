@@ -85,8 +85,10 @@ spec:
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "dev"
+            - name: SERVER_PORT
+              value: "8080"
             - name: EUREKA_URI
-              value: "http://service-registry:8080"
+              value: "http://service-registry:8080/eureka/"
             - name: CONFIG_URI
               value: "http://config-server:8080"
           ports:
