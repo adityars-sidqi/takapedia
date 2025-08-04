@@ -1,3 +1,9 @@
+properties([
+    parameters([
+        string(name: 'VERSION', defaultValue: '', description: 'Version Service')
+    ])
+])
+
 pipeline {
     agent { label 'takapedia-java' }
 
@@ -17,9 +23,6 @@ pipeline {
                 script {
                     if (!params.VERSION?.trim()) {
                         error "VERSION parameter is required"
-                    }
-                    if (!params.SPRING_PROFILE?.trim()) {
-                        error "SPRING_PROFILE parameter is required"
                     }
                 }
             }
@@ -76,7 +79,7 @@ spec:
           image: $IMAGE_NAME:${params.VERSION}
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: "${params.SPRING_PROFILE}"
+              value: "dev"
           ports:
             - containerPort: 8080
 ---
