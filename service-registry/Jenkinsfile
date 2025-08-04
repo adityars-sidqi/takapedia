@@ -85,6 +85,10 @@ spec:
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "dev"
+            - name: EUREKA_ENVIRONMENT
+              value: "dev"
+            - name: CONFIG_SERVER_ENABLED
+              value: true
           ports:
             - containerPort: 8080
 ---
