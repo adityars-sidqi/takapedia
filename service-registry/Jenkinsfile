@@ -88,7 +88,7 @@ spec:
             - name: EUREKA_ENVIRONMENT
               value: "dev"
             - name: CONFIG_SERVER_ENABLED
-              value: true
+              value: "true"
           ports:
             - containerPort: 8080
 ---
