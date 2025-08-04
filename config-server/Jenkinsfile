@@ -1,6 +1,6 @@
 properties([
     parameters([
-        string(name: 'VERSION', defaultValue: '', description: 'Version Service')
+        string(name: 'GIT_TAG', defaultValue: 'config-server-v1.0.48', description: 'Git tag to checkout and use as Docker image version'),
     ])
 ])
 
@@ -15,6 +15,11 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                sh 'git fetch --tags'
+                sh "git checkout ${params.GIT_TAG}"
+                script {
+                    env.TAG = params.GIT_TAG
+                }
             }
         }
 
@@ -39,7 +44,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir('config-server') {
-                    sh "docker build -t $IMAGE_NAME:${params.VERSION} ."
+                    sh "docker build -t $IMAGE_NAME:$TAG ."
                 }
             }
         }
@@ -49,7 +54,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                     sh """
                         echo "$HARBOR_PASS" | docker login harbor.local:7777 -u "$HARBOR_USER" --password-stdin
-                        docker push $IMAGE_NAME:${params.VERSION}
+                        docker push $IMAGE_NAME:$TAG
                     """
                 }
             }
@@ -76,7 +81,7 @@ spec:
     spec:
       containers:
         - name: config-server
-          image: $IMAGE_NAME:${params.VERSION}
+          image: $IMAGE_NAME:$TAG
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "dev"
