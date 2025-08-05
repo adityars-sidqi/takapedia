@@ -20,6 +20,7 @@ public class WebSecurity {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/tag/**").hasRole("ADMIN")
+                        .requestMatchers("/").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults()) // jangan pakai formLogin()
                 .exceptionHandling(ex -> ex

@@ -3,7 +3,9 @@ package com.rahman.productservice.controller;
 import com.rahman.commonlib.ApiResponse;
 import com.rahman.productservice.ProductServiceApplication;
 import com.rahman.productservice.dto.category.CategorySimpleResponse;
+import com.rahman.productservice.dto.product.CreateProductRequest;
 import com.rahman.productservice.dto.product.ProductResponse;
+import com.rahman.productservice.dto.tag.TagResponse;
 import com.rahman.productservice.entity.*;
 import com.rahman.productservice.repository.CategoryRepository;
 import com.rahman.productservice.repository.ProductRepository;
@@ -15,14 +17,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -59,6 +61,11 @@ class ProductControllerIntegrationTest {
         private Category category1;
         private Category category2;
 
+        private Tag tag1;
+        private Tag tag2;
+        private Tag tag3;
+        private Tag tag4;
+
         @BeforeEach
         void setUp() {
                 baseUrl = "http://localhost:" + port;
@@ -73,16 +80,16 @@ class ProductControllerIntegrationTest {
 
                 categoryRepository.saveAll(List.of(category1, category2));
 
-                Tag tag1 = new Tag();
+                tag1 = new Tag();
                 tag1.setName("Korea");
 
-                Tag tag2 = new Tag();
+                tag2 = new Tag();
                 tag2.setName("Bagus");
 
-                Tag tag3 = new Tag();
+                tag3 = new Tag();
                 tag3.setName("Sabun");
 
-                Tag tag4 = new Tag();
+                tag4 = new Tag();
                 tag4.setName("Shampoo");
 
                 tagRepository.saveAll(List.of(tag1, tag2, tag3, tag4));
@@ -171,5 +178,110 @@ class ProductControllerIntegrationTest {
                 assertThat(category1Products)
                         .extracting(ProductResponse::name)
                         .containsExactly("Shampoo Korea Bagus");
+        }
+
+        @Test
+        @WithMockUser(roles = "USER")
+        void testFindAllProducts_WhenNoProductsExist_ReturnsEmptyList() {
+                // Pastikan database kosong
+                productRepository.deleteAll();
+
+                // Lakukan GET request ke endpoint
+                ResponseEntity<ApiResponse<List<ProductResponse>>> response = restTemplate.exchange(
+                        baseUrl,
+                        HttpMethod.GET,
+                        null,
+                        new ParameterizedTypeReference<>() {}
+                );
+
+                // Validasi response
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().success()).isTrue();
+                assertThat(response.getBody().message()).isNotEmpty();
+                assertThat(response.getBody().message()).isEqualTo("success");
+                assertThat(response.getBody().data()).isNotNull();
+                assertThat(response.getBody().data()).isEmpty();
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void testSaveProduct_ReturnsSuccess() {
+                CreateProductRequest request = new CreateProductRequest("Shampoo Korea Bagus",
+                        "Ini shampo original Korea lohhh",
+                        new BigDecimal(150000),
+                        100,
+                        category1.getId(), Set.of(tag4.getId(), tag1.getId()));
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<CreateProductRequest> entity = new HttpEntity<>(request, headers);
+
+                // Execute
+                ResponseEntity<ApiResponse<ProductResponse>> response = restTemplate.exchange(
+                        baseUrl,
+                        HttpMethod.POST,
+                        entity,
+                        new ParameterizedTypeReference<>() {}
+                );
+
+                // Validasi status dan struktur response
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getBody()).isNotNull();
+
+                ApiResponse<ProductResponse> body = response.getBody();
+                assertThat(body.success()).isTrue();
+                assertThat(body.message()).isEqualTo("success");
+                assertThat(body.data()).isNotNull();
+
+                // Validasi field product
+                ProductResponse product = body.data();
+                assertThat(product.name()).isEqualTo("Shampoo Korea Bagus");
+                assertThat(product.price()).isEqualTo(new BigDecimal("150000"));
+                assertThat(product.stock()).isEqualTo(100);
+                assertThat(product.category().name()).isEqualTo("Shampoo");
+
+                // Validasi tags
+                List<String> tagNames = product.tag().stream()
+                        .map(TagResponse::name)
+                        .toList();
+
+                assertThat(tagNames).containsExactlyInAnyOrder("Korea", "Shampoo");
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void testSaveProduct_WhenRequestNotValid_ReturnsBadRequest() {
+                // Hanya field `name` yang tidak valid, lainnya valid
+                CreateProductRequest request = new CreateProductRequest(
+                        "", // invalid name
+                        "Deskripsi valid",
+                        BigDecimal.valueOf(100000),
+                        10,
+                        UUID.randomUUID(),
+                        Set.of(UUID.randomUUID())
+                );
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<CreateProductRequest> entity = new HttpEntity<>(request, headers);
+
+                // Execute
+                ResponseEntity<ApiResponse<ProductResponse>> response = restTemplate.exchange(
+                        baseUrl,
+                        HttpMethod.POST,
+                        entity,
+                        new ParameterizedTypeReference<>() {}
+                );
+
+                // Validasi response
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().success()).isFalse();
+                assertThat(response.getBody().message()).isNotEmpty();
+                assertThat(response.getBody().message()).isEqualTo("name: Product name is required");
+                assertThat(response.getBody().data()).isNull();
         }
 }
