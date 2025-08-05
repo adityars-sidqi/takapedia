@@ -312,7 +312,7 @@ class ProductControllerIntegrationTest {
                 HttpEntity<CreateTagRequest> entity = new HttpEntity<>(headers);
 
                 // Execute
-                ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                ResponseEntity<ApiResponse<ProductResponse>> response = restTemplate.exchange(
                         baseUrl + "/" +  id,
                         HttpMethod.DELETE,
                         entity,
@@ -340,7 +340,7 @@ class ProductControllerIntegrationTest {
                 HttpEntity<CreateTagRequest> entity = new HttpEntity<>(headers);
 
                 // Execute
-                ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                ResponseEntity<ApiResponse<ProductResponse>> response = restTemplate.exchange(
                         baseUrl + "/" +  id,
                         HttpMethod.DELETE,
                         entity,
@@ -433,6 +433,60 @@ class ProductControllerIntegrationTest {
                 ResponseEntity<ApiResponse<ProductResponse>> response = restTemplate.exchange(
                         baseUrl + "/" +  id,
                         HttpMethod.PATCH,
+                        entity,
+                        new ParameterizedTypeReference<>() {}
+                );
+
+                // Validasi response
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().success()).isFalse();
+                assertThat(response.getBody().message()).isNotEmpty();
+                assertThat(response.getBody().message()).isEqualTo("Product not found.");
+                assertThat(response.getBody().data()).isNull();
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void testGetProductById_Success() {
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<Object> entity = new HttpEntity<>(headers);
+
+                // Execute
+                ResponseEntity<ApiResponse<ProductResponse>> response = restTemplate.exchange(
+                        baseUrl + "/" +  product1Id,
+                        HttpMethod.GET,
+                        entity,
+                        new ParameterizedTypeReference<>() {}
+                );
+
+                // Validasi response
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().success()).isTrue();
+                assertThat(response.getBody().message()).isNotEmpty();
+                assertThat(response.getBody().message()).isEqualTo("success");
+                assertThat(response.getBody().data()).isNotNull();
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void testGetProductById_NotFound() {
+
+                UUID id = UUID.randomUUID();
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<Object> entity = new HttpEntity<>(headers);
+
+                // Execute
+                ResponseEntity<ApiResponse<ProductResponse>> response = restTemplate.exchange(
+                        baseUrl + "/" +  id,
+                        HttpMethod.GET,
                         entity,
                         new ParameterizedTypeReference<>() {}
                 );

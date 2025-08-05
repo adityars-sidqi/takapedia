@@ -29,6 +29,12 @@ class ProductController {
         return ApiResponse.success(productService.findAll());
     }
 
+    @GetMapping(value="/{id}",
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public ApiResponse<ProductResponse> findById(@PathVariable("id") UUID id) {
+        return ApiResponse.success(productService.findById(id));
+    }
+
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<ProductResponse> save(@RequestBody CreateProductRequest createProductRequest) {
