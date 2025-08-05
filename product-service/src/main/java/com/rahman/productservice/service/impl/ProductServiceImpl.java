@@ -62,6 +62,14 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public ProductResponse findById(UUID id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(messageSource.getMessage(PRODUCT_NOT_FOUND, null, LocaleContextHolder.getLocale())));
+
+        return productMapper.toResponse(product);
+    }
+
+    @Override
     public ProductResponse save(CreateProductRequest createProductRequest) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         log.info("[USER: {}] Attempt to save product", username);

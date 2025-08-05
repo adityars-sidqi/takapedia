@@ -52,7 +52,7 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryResponse findById(UUID id) {
 
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(messageSource.getMessage(CATEGORY_NOT_FOUND, null, LocaleContextHolder.getLocale())));
 
         return categoryMapper.toResponse(category);
     }
