@@ -33,6 +33,14 @@ pipeline {
             }
         }
 
+        stage('Build Common Lib') {
+            steps {
+                dir('common-lib') {
+                    sh 'mvn clean install -DskipTests'
+                }
+            }
+        }
+
         stage('Build JAR') {
             steps {
                 dir('product-service') {
