@@ -8,6 +8,7 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -25,6 +26,13 @@ public class ProductServiceExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleGeneralError() {
         ApiResponse<Object> response = ApiResponse.fail("Internal server error");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException ex) {
+        ApiResponse<Object> response = ApiResponse.fail(messageSource.getMessage("common.forbidden", null,  LocaleContextHolder.getLocale()));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(response);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
