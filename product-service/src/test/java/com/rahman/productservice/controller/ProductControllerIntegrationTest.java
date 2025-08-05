@@ -5,6 +5,7 @@ import com.rahman.productservice.ProductServiceApplication;
 import com.rahman.productservice.dto.category.CategorySimpleResponse;
 import com.rahman.productservice.dto.product.CreateProductRequest;
 import com.rahman.productservice.dto.product.ProductResponse;
+import com.rahman.productservice.dto.tag.CreateTagRequest;
 import com.rahman.productservice.dto.tag.TagResponse;
 import com.rahman.productservice.entity.*;
 import com.rahman.productservice.repository.CategoryRepository;
@@ -22,6 +23,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -282,6 +284,86 @@ class ProductControllerIntegrationTest {
                 assertThat(response.getBody().success()).isFalse();
                 assertThat(response.getBody().message()).isNotEmpty();
                 assertThat(response.getBody().message()).isEqualTo("name: Product name is required");
+                assertThat(response.getBody().data()).isNull();
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void testDeleteProduct_Success() {
+
+                //Prepare data
+                Product productData = new Product();
+                productData.setName("Shampoo Korea Bagus");
+                productData.setDescription("Ini shampo original Korea lohhh");
+                productData.setPrice(new BigDecimal(150000));
+                productData.setStock(100);
+                productData.setCreatedAt(Instant.now());
+                productData.setUpdatedAt(Instant.now());
+
+                Category attachedCategory = categoryRepository.findById(category1.getId())
+                        .orElseThrow(() -> new RuntimeException("Category not found"));
+
+                productData.setCategory(attachedCategory);
+
+                Product productSaved = productRepository.save(productData);
+
+                Tag attachedTag = tagRepository.findById(tag1.getId())
+                        .orElseThrow(() -> new RuntimeException("Tag not found"));
+
+                ProductTag productTagData = new ProductTag(productSaved, attachedTag);
+                productSaved.getProductTags().add(productTagData);
+
+                productRepository.save(productSaved);
+
+                UUID id = productSaved.getId();
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<CreateTagRequest> entity = new HttpEntity<>(headers);
+
+                // Execute
+                ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                        baseUrl + "/" +  id,
+                        HttpMethod.DELETE,
+                        entity,
+                        new ParameterizedTypeReference<>() {}
+                );
+
+                // Validasi response
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().success()).isTrue();
+                assertThat(response.getBody().message()).isNotEmpty();
+                assertThat(response.getBody().message()).isEqualTo("success");
+                assertThat(response.getBody().data()).isNull();
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void testDeleteProduct_NotFound() {
+
+                UUID id = UUID.randomUUID();
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<CreateTagRequest> entity = new HttpEntity<>(headers);
+
+                // Execute
+                ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
+                        baseUrl + "/" +  id,
+                        HttpMethod.DELETE,
+                        entity,
+                        new ParameterizedTypeReference<>() {}
+                );
+
+                // Validasi response
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().success()).isFalse();
+                assertThat(response.getBody().message()).isNotEmpty();
+                assertThat(response.getBody().message()).isEqualTo("Product not found.");
                 assertThat(response.getBody().data()).isNull();
         }
 }

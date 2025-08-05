@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -13,14 +14,15 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @Profile("secured-test")
 @EnableWebSecurity
+@EnableMethodSecurity
 public class WebSecurity {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/tag/**").hasRole("ADMIN")
                         .requestMatchers("/").hasRole("ADMIN")
+                        .requestMatchers("/tag/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults()) // jangan pakai formLogin()
                 .exceptionHandling(ex -> ex
