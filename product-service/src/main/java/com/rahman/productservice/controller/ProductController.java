@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping
@@ -31,5 +32,12 @@ class ProductController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<ProductResponse> save(@RequestBody CreateProductRequest createProductRequest) {
         return ApiResponse.success(productService.save(createProductRequest));
+    }
+
+    @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> delete(@PathVariable("id") UUID id) {
+        productService.deleteById(id);
+        return ApiResponse.success(null);
     }
 }

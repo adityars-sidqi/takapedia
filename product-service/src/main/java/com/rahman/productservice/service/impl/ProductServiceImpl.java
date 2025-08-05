@@ -16,12 +16,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
-import static com.rahman.productservice.constants.MessagesCodeConstant.CATEGORY_NOT_FOUND;
-import static com.rahman.productservice.constants.MessagesCodeConstant.TAG_NOT_FOUND;
+import static com.rahman.productservice.constants.MessagesCodeConstant.*;
 
 @Service
 @Slf4j
@@ -56,26 +57,28 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse save(CreateProductRequest createProductRequest) {
-        log.info("Start saving product");
-        log.debug("Request Payload: {}", createProductRequest);
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("[USER: {}] Attempt to save product", username);
+        log.info("[USER: {}] Start saving product", username);
+        log.debug("[USER: {}] Request Payload: {}", username, createProductRequest);
 
         validationService.validate(createProductRequest);
 
         // Ambil Category dari database
-        log.debug("Fetching category with ID: {}", createProductRequest.categoryId());
+        log.debug("[USER: {}] Fetching category with ID: {}", username, createProductRequest.categoryId());
         Category category = categoryRepository.findById(createProductRequest.categoryId())
                 .orElseThrow(() -> {
-                    log.warn("Category not found: {}", createProductRequest.categoryId());
+                    log.warn("[USER: {}] Category not found: {}", username, createProductRequest.categoryId());
                     return new ResourceNotFoundException(
                             messageSource.getMessage(CATEGORY_NOT_FOUND, null, LocaleContextHolder.getLocale()));
                 });
 
         // Ambil semua Tag berdasarkan ID
-        log.debug("Fetching tags with IDs: {}", createProductRequest.tagIds());
+        log.debug("[USER: {}] Fetching tags with IDs: {}", username, createProductRequest.tagIds());
         List<Tag> tags = tagRepository.findAllById(createProductRequest.tagIds());
 
         if (tags.size() != createProductRequest.tagIds().size()) {
-            log.warn("Some tag IDs not found. Request: {}, Found: {}", createProductRequest.tagIds(), tags.size());
+            log.warn("[USER: {}] Some tag IDs not found. Request: {}, Found: {}", username, createProductRequest.tagIds(), tags.size());
             throw new ResourceNotFoundException(
                     messageSource.getMessage(TAG_NOT_FOUND, null, LocaleContextHolder.getLocale())
             );
@@ -86,9 +89,25 @@ public class ProductServiceImpl implements ProductService {
 
         // Simpan ke DB
         productRepository.save(product);
-        log.info("Product saved successfully. Product ID: {}", product.getId());
+        log.info("[USER: {}] Product saved successfully. Product ID: {}", username, product.getId());
 
         // Mapping ke response
         return productMapper.toResponse(product);
+    }
+
+    @Override
+    public void deleteById(UUID id) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("[USER: {}] Attempt to delete product with ID: {}", username, id);
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("[USER: {}][DELETE FAILED] Product with ID: {} not found", username, id);
+                    return new ResourceNotFoundException(
+                            messageSource.getMessage(PRODUCT_NOT_FOUND, null, LocaleContextHolder.getLocale())
+                    );
+                });
+
+        productRepository.delete(product);
+        log.info("[USER: {}][DELETE SUCCESS] Product with ID: {} has been deleted", username, id);
     }
 }
