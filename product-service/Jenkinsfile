@@ -1,0 +1,114 @@
+properties([
+    parameters([
+        string(name: 'GIT_TAG', defaultValue: 'product-service-v1.0.0', description: 'Git tag to checkout and use as Docker image version'),
+    ])
+])
+
+pipeline {
+    agent { label 'takapedia-java' }
+
+    environment {
+        IMAGE_NAME = "harbor.local:7777/takapedia/product-service"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh 'git fetch --tags'
+                sh "git checkout ${params.GIT_TAG}"
+                script {
+                    env.TAG = params.GIT_TAG
+                }
+            }
+        }
+
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    if (!params.GIT_TAG?.trim()) {
+                        error "GIT_TAG parameter is required"
+                    }
+                }
+            }
+        }
+
+        stage('Build JAR') {
+            steps {
+                dir('product-service') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('product-service') {
+                    sh "docker build -t $IMAGE_NAME:$TAG ."
+                }
+            }
+        }
+
+        stage('Push to Harbor') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                    sh """
+                        echo "$HARBOR_PASS" | docker login harbor.local:7777 -u "$HARBOR_USER" --password-stdin
+                        docker push $IMAGE_NAME:$TAG
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh """
+                cat <<EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  namespace: takapedia
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-service
+  template:
+    metadata:
+      labels:
+        app: product-service
+    spec:
+      containers:
+        - name: product-service
+          image: $IMAGE_NAME:$TAG
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "dev"
+            - name: SERVER_PORT
+              value: "8080"
+            - name: EUREKA_URI
+              value: "http://service-registry:8080/eureka/"
+            - name: CONFIG_URI
+              value: "http://config-server:8080"
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-service
+  namespace: takapedia
+spec:
+  selector:
+    app: product-service
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+EOF
+                """
+            }
+        }
+    }
+}

@@ -1,3 +1,7 @@
+CREATE USER product_user WITH PASSWORD 'product_user';
+
+CREATE DATABASE product_db OWNER product_user;
+
 CREATE TABLE category (
                           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                           name VARCHAR(100) NOT NULL UNIQUE,
