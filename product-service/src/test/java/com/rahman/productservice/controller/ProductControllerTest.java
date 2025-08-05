@@ -2,8 +2,13 @@ package com.rahman.productservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rahman.productservice.dto.category.CategorySimpleResponse;
+import com.rahman.productservice.dto.product.CreateProductRequest;
 import com.rahman.productservice.dto.product.ProductResponse;
 import com.rahman.productservice.dto.tag.TagResponse;
+import com.rahman.productservice.entity.Category;
+import com.rahman.productservice.entity.Product;
+import com.rahman.productservice.entity.ProductTag;
+import com.rahman.productservice.entity.Tag;
 import com.rahman.productservice.mapper.ProductMapper;
 import com.rahman.productservice.service.ProductService;
 import org.junit.jupiter.api.Test;
@@ -20,13 +25,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -95,5 +103,52 @@ class ProductControllerTest {
                         .andExpect(jsonPath("$.data[0].name", is("Shampoo Korea Bagus")));
 
                 verify(productService).findAll();
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void testSave_ReturnsSuccess() throws Exception {
+                CreateProductRequest request = new CreateProductRequest("Shampoo Korea Bagus",
+                        "Ini shampo original Korea lohhh",
+                        new BigDecimal(150000),
+                        100,
+                        UUID.randomUUID(), Set.of(UUID.randomUUID(), UUID.randomUUID()));
+
+                Category categoryData = new Category();
+                categoryData.setId(UUID.randomUUID());
+                categoryData.setName("Shampoo");
+                categoryData.setDescription("Shampoo");
+                categoryData.setCreatedAt(Instant.now());
+                categoryData.setUpdatedAt(Instant.now());
+
+                Tag tagData = new Tag();
+                tagData.setId(UUID.randomUUID());
+                tagData.setName("Bagus");
+
+
+
+                Product productData = new Product();
+                productData.setId(UUID.randomUUID());
+                productData.setName("Shampoo Korea Bagus");
+                productData.setDescription("Ini shampo original Korea lohhh");
+                productData.setPrice(new BigDecimal(150000));
+                productData.setStock(100);
+                productData.setCategory(categoryData);
+                productData.setCreatedAt(Instant.now());
+                productData.setUpdatedAt(Instant.now());
+
+                ProductTag productTagData = new ProductTag(productData, tagData);
+
+                productData.setProductTags(Set.of(productTagData));
+
+                when(productService.save(any(CreateProductRequest.class))).thenReturn(productMapper.toResponse(productData));
+
+                mockMvc.perform(post("/")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.success", is(true)))
+                        .andExpect(jsonPath("$.message", is("success")))
+                        .andExpect(jsonPath("$.data.name", is("Shampoo Korea Bagus")));
         }
 }
