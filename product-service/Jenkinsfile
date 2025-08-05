@@ -35,15 +35,15 @@ pipeline {
 
         stage('Build Parent (takapedia)') {
             steps {
-                dir('takapedia') {
-                    sh 'mvn clean install -DskipTests'
+                dir('../') {
+                    sh 'mvn clean install -N'
                 }
             }
         }
 
         stage('Build Common Lib') {
             steps {
-                dir('common-lib') {
+                dir('../common-lib') {
                     sh 'mvn clean install -DskipTests'
                 }
             }
