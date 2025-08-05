@@ -33,6 +33,14 @@ pipeline {
             }
         }
 
+        stage('Build Parent (takapedia)') {
+            steps {
+                dir('takapedia') {
+                    sh 'mvn clean install -DskipTests'
+                }
+            }
+        }
+
         stage('Build Common Lib') {
             steps {
                 dir('common-lib') {
