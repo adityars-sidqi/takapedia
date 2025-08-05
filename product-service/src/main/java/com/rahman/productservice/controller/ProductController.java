@@ -3,6 +3,7 @@ package com.rahman.productservice.controller;
 import com.rahman.commonlib.ApiResponse;
 import com.rahman.productservice.dto.product.CreateProductRequest;
 import com.rahman.productservice.dto.product.ProductResponse;
+import com.rahman.productservice.dto.product.UpdateProductRequest;
 import com.rahman.productservice.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -32,6 +33,12 @@ class ProductController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<ProductResponse> save(@RequestBody CreateProductRequest createProductRequest) {
         return ApiResponse.success(productService.save(createProductRequest));
+    }
+
+    @PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<ProductResponse> update(@PathVariable("id") UUID id, @RequestBody UpdateProductRequest updateProductRequest) {
+        return ApiResponse.success(productService.update(id, updateProductRequest));
     }
 
     @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)

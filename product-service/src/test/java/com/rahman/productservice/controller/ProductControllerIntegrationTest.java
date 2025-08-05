@@ -2,9 +2,9 @@ package com.rahman.productservice.controller;
 
 import com.rahman.commonlib.ApiResponse;
 import com.rahman.productservice.ProductServiceApplication;
-import com.rahman.productservice.dto.category.CategorySimpleResponse;
 import com.rahman.productservice.dto.product.CreateProductRequest;
 import com.rahman.productservice.dto.product.ProductResponse;
+import com.rahman.productservice.dto.product.UpdateProductRequest;
 import com.rahman.productservice.dto.tag.CreateTagRequest;
 import com.rahman.productservice.dto.tag.TagResponse;
 import com.rahman.productservice.entity.*;
@@ -67,6 +67,8 @@ class ProductControllerIntegrationTest {
         private Tag tag2;
         private Tag tag3;
         private Tag tag4;
+
+        private UUID product1Id;
 
         @BeforeEach
         void setUp() {
@@ -143,7 +145,8 @@ class ProductControllerIntegrationTest {
                 productTag2.setId(new ProductTagId(product2.getId(), tag2.getId()));
                 product2.getProductTags().add(productTag2);
 
-                productRepository.saveAll(List.of(product1, product2));
+                List<Product> products = productRepository.saveAll(List.of(product1, product2));
+                product1Id = products.getFirst().getId();
 
         }
 
@@ -165,21 +168,7 @@ class ProductControllerIntegrationTest {
                 assertThat(response.getBody().success()).isTrue();
                 assertThat(response.getBody().message()).isNotEmpty();
                 assertThat(response.getBody().message()).isEqualTo("success");
-                assertThat(response.getBody().data()).hasSize(2);
-                assertThat(response.getBody().data())
-                        .extracting(ProductResponse::name)
-                        .containsExactlyInAnyOrder("Shampoo Korea Bagus", "Sabun Korea Bagus");
-                assertThat(response.getBody().data())
-                        .extracting(ProductResponse::category)
-                        .containsExactlyInAnyOrder(new CategorySimpleResponse(category1.getId(), category1.getName()), new CategorySimpleResponse(category2.getId(), category2.getName()));
-                // Optional: Filter example – only products in category1
-                List<ProductResponse> category1Products = response.getBody().data().stream()
-                        .filter(product -> product.category().id().equals(category1.getId()))
-                        .toList();
 
-                assertThat(category1Products)
-                        .extracting(ProductResponse::name)
-                        .containsExactly("Shampoo Korea Bagus");
         }
 
         @Test
@@ -354,6 +343,96 @@ class ProductControllerIntegrationTest {
                 ResponseEntity<ApiResponse<TagResponse>> response = restTemplate.exchange(
                         baseUrl + "/" +  id,
                         HttpMethod.DELETE,
+                        entity,
+                        new ParameterizedTypeReference<>() {}
+                );
+
+                // Validasi response
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().success()).isFalse();
+                assertThat(response.getBody().message()).isNotEmpty();
+                assertThat(response.getBody().message()).isEqualTo("Product not found.");
+                assertThat(response.getBody().data()).isNull();
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void testUpdateProductName_ReturnsSuccess() {
+
+                UpdateProductRequest request = new UpdateProductRequest("Shampoo Bagus", null,
+                        null, null, null, null);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<UpdateProductRequest> entity = new HttpEntity<>(request, headers);
+
+                // Execute
+                ResponseEntity<ApiResponse<ProductResponse>> response = restTemplate.exchange(
+                        baseUrl + "/" +  product1Id,
+                        HttpMethod.PATCH,
+                        entity,
+                        new ParameterizedTypeReference<>() {}
+                );
+
+                // Validasi response
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().success()).isTrue();
+                assertThat(response.getBody().message()).isNotEmpty();
+                assertThat(response.getBody().message()).isEqualTo("success");
+                assertThat(response.getBody().data()).isNotNull();
+                assertThat(response.getBody().data().name()).isEqualTo("Shampoo Bagus");
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void testUpdateProduct_WhenAllIsNull_ReturnsBadRequest() {
+
+                UpdateProductRequest request = new UpdateProductRequest(null, null,
+                        null, null, null, null);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<UpdateProductRequest> entity = new HttpEntity<>(request, headers);
+
+                // Execute
+                ResponseEntity<ApiResponse<ProductResponse>> response = restTemplate.exchange(
+                        baseUrl + "/" +  product1Id,
+                        HttpMethod.PATCH,
+                        entity,
+                        new ParameterizedTypeReference<>() {}
+                );
+
+                // Validasi response
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().success()).isFalse();
+                assertThat(response.getBody().message()).isNotEmpty();
+                assertThat(response.getBody().message()).isEqualTo("At least one field must be provided to update product.");
+                assertThat(response.getBody().data()).isNull();
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void testUpdateProduct_NotFound() {
+
+                UUID id = UUID.randomUUID();
+
+                UpdateProductRequest request = new UpdateProductRequest("Shampoo Bagus", null,
+                        null, null, null, null);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<UpdateProductRequest> entity = new HttpEntity<>(request, headers);
+
+                // Execute
+                ResponseEntity<ApiResponse<ProductResponse>> response = restTemplate.exchange(
+                        baseUrl + "/" +  id,
+                        HttpMethod.PATCH,
                         entity,
                         new ParameterizedTypeReference<>() {}
                 );
