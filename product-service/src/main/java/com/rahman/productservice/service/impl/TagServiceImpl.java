@@ -9,7 +9,11 @@ import com.rahman.productservice.mapper.TagMapper;
 import com.rahman.productservice.repository.TagRepository;
 import com.rahman.productservice.service.TagService;
 import com.rahman.productservice.service.ValidationService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -22,6 +26,7 @@ import java.util.UUID;
 import static com.rahman.productservice.constants.MessagesCodeConstant.TAG_NOT_FOUND;
 
 @Service
+@Slf4j
 public class TagServiceImpl implements TagService {
 
     private final TagRepository tagRepository;
@@ -38,14 +43,18 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
+    @Cacheable(value = "tags", unless = "#result.isEmpty()" )
     public List<TagResponse> findAll() {
+        log.info("Fetching all tags from database");
         List<Tag> tags = tagRepository.findAll();
         return tags.stream().map(tagMapper::toResponse).toList();
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = "tags", allEntries = true)
     public TagResponse save(CreateTagRequest createTagRequest) {
+        log.info("Saving new tag");
         validationService.validate(createTagRequest);
 
         Tag tag = tagMapper.mapToEntity(createTagRequest);
@@ -54,7 +63,24 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
+    @Cacheable(value = "tag", key = "#id")
+    public TagResponse findById(UUID id) {
+        log.info("Fetching tag with ID: {} from database", id);
+        Tag tag = tagRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageSource.getMessage(TAG_NOT_FOUND, null, LocaleContextHolder.getLocale())
+                ));
+
+        return tagMapper.toResponse(tag);
+    }
+
+    @Override
+    @Caching(evict = {
+        @CacheEvict(value = "tags", allEntries = true),
+        @CacheEvict(value = "tag", key = "#id")
+    })
     public TagResponse update(UUID id, UpdateTagRequest updateTagRequest) {
+        log.info("Updating tag with ID: {}", id);
         validationService.validate(updateTagRequest);
 
         Tag tag = tagRepository.findById(id).orElseThrow(() ->
@@ -74,11 +100,16 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "tags", allEntries = true),
+        @CacheEvict(value = "tag", key = "#id")
+    })
     public void deleteById(UUID id) {
+        log.info("Deleting tag with ID: {}", id);
         Tag tag = tagRepository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                messageSource.getMessage("tag.not_found", null, LocaleContextHolder.getLocale())
+                                messageSource.getMessage(TAG_NOT_FOUND, null, LocaleContextHolder.getLocale())
                         ));
 
         tagRepository.delete(tag);

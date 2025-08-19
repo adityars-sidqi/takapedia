@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Configuration
-@Profile("!test")
+@Profile("!test & !redis-test")
 @EnableWebSecurity
 @EnableMethodSecurity
 public class WebSecurity {

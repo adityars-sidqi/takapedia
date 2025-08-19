@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public interface TagService {
     List<TagResponse> findAll();
+    TagResponse findById(UUID id);
     TagResponse save(CreateTagRequest createTagRequest);
     TagResponse update(UUID id, UpdateTagRequest updateTagRequest);
     void deleteById(UUID id);
