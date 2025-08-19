@@ -17,10 +17,14 @@ import com.rahman.productservice.service.ProductService;
 import com.rahman.productservice.service.ValidationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -53,7 +57,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(value = "products", unless = "#result.isEmpty()" )
     public List<ProductResponse> findAll() {
+        log.info("Fetching all products from database");
         List<Product> products = productRepository.findAll();
 
         return products.stream()
@@ -62,7 +68,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(value = "product", key = "#id")
+    @Transactional(readOnly = true)
     public ProductResponse findById(UUID id) {
+        log.info("Fetching product with ID: {} from database", id);
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(messageSource.getMessage(PRODUCT_NOT_FOUND, null, LocaleContextHolder.getLocale())));
 
@@ -70,6 +79,8 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @CacheEvict(value = "products", allEntries = true)
+    @Transactional
     public ProductResponse save(CreateProductRequest createProductRequest) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         log.info("[USER: {}] Attempt to save product", username);
@@ -110,6 +121,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products", allEntries = true),
+        @CacheEvict(value = "product", key = "#id")
+    })
+    @Transactional
     public ProductResponse update(UUID id, UpdateProductRequest updateProductRequest) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         log.info("[USER: {}] Attempt to update product with ID: {}", username, id);
@@ -165,28 +181,18 @@ public class ProductServiceImpl implements ProductService {
         }
 
         if (updateProductRequest.tagIds() != null) {
-
-            // Hapus relasi tag lama
             product.getProductTags().clear();
-
-            // Ambil tag baru berdasarkan id
-            List<Tag> tags = tagRepository.findAllById(updateProductRequest.tagIds());
-
-            if (tags.size() != updateProductRequest.tagIds().size()) {
-                log.warn("[USER: {}][UPDATE FAILED] Some tag IDs not found. Request: {}, Found: {}", username, updateProductRequest.tagIds(), tags.size());
-                throw new ResourceNotFoundException(
-                        messageSource.getMessage(TAG_NOT_FOUND, null, LocaleContextHolder.getLocale())
-                );
+            if (!updateProductRequest.tagIds().isEmpty()) {
+                List<Tag> tags = tagRepository.findAllById(updateProductRequest.tagIds());
+                if (tags.size() != updateProductRequest.tagIds().size()) {
+                    log.warn("[USER: {}][UPDATE FAILED] Some tag IDs not found. Request: {}, Found: {}", username, updateProductRequest.tagIds(), tags.size());
+                    throw new ResourceNotFoundException(messageSource.getMessage(TAG_NOT_FOUND, null, LocaleContextHolder.getLocale()));
+                }
+                Set<ProductTag> newTags = tags.stream()
+                        .map(tag -> new ProductTag(product, tag))
+                        .collect(Collectors.toSet());
+                product.getProductTags().addAll(newTags);
             }
-
-            // Buat relasi baru
-            Set<ProductTag> newProductTags = tags.stream()
-                    .map(tag -> new ProductTag(product, tag))
-                    .collect(Collectors.toSet());
-
-            // Set relasi baru ke product
-            product.getProductTags().addAll(newProductTags);
-
         }
 
         Product updated  = productRepository.save(product);
@@ -197,6 +203,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products", allEntries = true),
+        @CacheEvict(value = "product", key = "#id")
+    })
+    @Transactional
     public void deleteById(UUID id) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         log.info("[USER: {}] Attempt to delete product with ID: {}", username, id);

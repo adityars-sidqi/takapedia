@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 
 import java.util.Objects;
 
@@ -16,9 +17,14 @@ public abstract class BaseServiceIntegrationTest extends AbstractRedisIntegratio
     @Autowired
     protected CacheManager cacheManager;
 
+    @Autowired
+    private RedisConnectionFactory connectionFactory;
+
     @BeforeEach
-    void setUpBase() {
-        clearAllCaches();
+    void clearRedis() {
+        try (var connection = connectionFactory.getConnection()) {
+            connection.serverCommands().flushAll();
+        }
     }
 
     /**
@@ -51,11 +57,5 @@ public abstract class BaseServiceIntegrationTest extends AbstractRedisIntegratio
         }
     }
 
-    /**
-     * Clear semua cache sebelum test dijalankan.
-     */
-    protected void clearAllCaches() {
-        cacheManager.getCacheNames()
-                .forEach(name -> Objects.requireNonNull(cacheManager.getCache(name)).clear());
-    }
+
 }

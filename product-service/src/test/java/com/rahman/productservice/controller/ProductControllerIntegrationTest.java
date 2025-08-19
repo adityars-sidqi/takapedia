@@ -72,6 +72,10 @@ class ProductControllerIntegrationTest {
 
         @BeforeEach
         void setUp() {
+                productRepository.deleteAll();
+                categoryRepository.deleteAll();
+                tagRepository.deleteAll();
+
                 baseUrl = "http://localhost:" + port;
 
                 category1 = new Category();

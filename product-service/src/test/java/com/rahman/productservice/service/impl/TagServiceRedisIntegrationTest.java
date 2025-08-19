@@ -24,7 +24,6 @@ class TagServiceRedisIntegrationTest extends BaseServiceIntegrationTest {
 
     @BeforeEach
     void setup() {
-        clearAllCaches();
         tagRepository.deleteAll();
     }
 
