@@ -10,7 +10,11 @@ import com.rahman.productservice.mapper.CategoryMapper;
 import com.rahman.productservice.repository.CategoryRepository;
 import com.rahman.productservice.service.CategoryService;
 import com.rahman.productservice.service.ValidationService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -22,6 +26,7 @@ import java.util.UUID;
 import static com.rahman.productservice.constants.MessagesCodeConstant.CATEGORY_NOT_FOUND;
 
 @Service
+@Slf4j
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
@@ -39,8 +44,9 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Cacheable(value = "categories", unless = "#result.isEmpty()" )
     public List<CategoryResponse> findAll() {
-
+        log.info("Fetching all categories from database");
         List<Category> categories = categoryRepository.findAll();
 
         return categories.stream()
@@ -49,8 +55,9 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Cacheable(value = "category", key = "#id")
     public CategoryResponse findById(UUID id) {
-
+        log.info("Fetching category with ID: {} from database", id);
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(messageSource.getMessage(CATEGORY_NOT_FOUND, null, LocaleContextHolder.getLocale())));
 
@@ -58,6 +65,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryResponse save(CreateCategoryRequest createCategoryRequest) {
         validationService.validate(createCategoryRequest);
 
@@ -76,6 +84,10 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "categories", allEntries = true),
+        @CacheEvict(value = "category", key = "#id")
+    })
     public CategoryResponse update(UUID id, UpdateCategoryRequest updateCategoryRequest) {
         validationService.validate(updateCategoryRequest);
 
@@ -112,6 +124,10 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "categories", allEntries = true),
+        @CacheEvict(value = "category", key = "#id")
+    })
     public void deleteById(UUID id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
