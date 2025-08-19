@@ -5,10 +5,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Base class untuk setup Redis Testcontainer.
@@ -24,18 +20,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
                 "eureka.client.enabled=false"
         }
 )
-@Testcontainers
 @ActiveProfiles("redis-test")
 public abstract class AbstractRedisIntegrationTest {
 
-    @Container
-    static GenericContainer<?> redis = new GenericContainer<>("redis:7.2-alpine")
-            .withExposedPorts(6379)
-            .waitingFor(Wait.forListeningPort());
+    private static final RedisTestContainer REDIS = RedisTestContainer.getInstance();
 
     @DynamicPropertySource
     static void redisProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.host", REDIS::getHost);
+        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
     }
 }
