@@ -13,12 +13,15 @@ CREATE TABLE category (
                           CONSTRAINT fk_category_parent FOREIGN KEY (parent_id) REFERENCES category(id) ON DELETE SET NULL
 );
 
+CREATE TYPE product_status AS ENUM ('ACTIVE', 'INACTIVE', 'SOLD_OUT');
+
 CREATE TABLE product (
                          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                          name VARCHAR(200) NOT NULL,
                          description TEXT,
                          price NUMERIC(12, 2) NOT NULL CHECK (price >= 0),
                          stock INTEGER NOT NULL CHECK (stock >= 0),
+                         status product_status NOT NULL DEFAULT 'ACTIVE',
                          category_id UUID NOT NULL,
                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

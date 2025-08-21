@@ -5,6 +5,7 @@ import com.rahman.productservice.dto.product.ProductResponse;
 import com.rahman.productservice.dto.product.UpdateProductRequest;
 import com.rahman.productservice.entity.Category;
 import com.rahman.productservice.entity.Product;
+import com.rahman.productservice.entity.ProductStatus;
 import com.rahman.productservice.entity.Tag;
 import com.rahman.productservice.repository.CategoryRepository;
 import com.rahman.productservice.repository.ProductRepository;
@@ -62,6 +63,7 @@ class ProductServiceRedisIntegrationTest extends BaseServiceIntegrationTest{
         product.setDescription("Gaming laptop");
         product.setPrice(BigDecimal.valueOf(1500));
         product.setStock(10);
+        product.setStatus(ProductStatus.ACTIVE);
         product.setCategory(savedCategory);
 
         productRepository.save(product);
@@ -85,7 +87,7 @@ class ProductServiceRedisIntegrationTest extends BaseServiceIntegrationTest{
         // given
         CreateProductRequest request = new CreateProductRequest(
                 "Smartphone", "Android phone",
-                BigDecimal.valueOf(500), 20,
+                BigDecimal.valueOf(500), 20, ProductStatus.ACTIVE,
                 savedCategory.getId(),
                 Set.of(savedTag.getId())
         );
@@ -112,6 +114,7 @@ class ProductServiceRedisIntegrationTest extends BaseServiceIntegrationTest{
         product.setName("Tablet");
         product.setDescription("Old tablet");
         product.setPrice(BigDecimal.valueOf(200));
+        product.setStatus(ProductStatus.ACTIVE);
         product.setStock(5);
         product.setCategory(savedCategory);
 
@@ -143,6 +146,7 @@ class ProductServiceRedisIntegrationTest extends BaseServiceIntegrationTest{
         product.setName("Headphone");
         product.setDescription("Wireless headphone");
         product.setPrice(BigDecimal.valueOf(100));
+        product.setStatus(ProductStatus.ACTIVE);
         product.setStock(15);
         product.setCategory(savedCategory);
 

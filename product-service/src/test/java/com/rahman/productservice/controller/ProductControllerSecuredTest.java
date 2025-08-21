@@ -3,10 +3,7 @@ package com.rahman.productservice.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rahman.productservice.ProductServiceApplication;
 import com.rahman.productservice.dto.product.CreateProductRequest;
-import com.rahman.productservice.entity.Category;
-import com.rahman.productservice.entity.Product;
-import com.rahman.productservice.entity.ProductTag;
-import com.rahman.productservice.entity.Tag;
+import com.rahman.productservice.entity.*;
 import com.rahman.productservice.repository.CategoryRepository;
 import com.rahman.productservice.repository.ProductRepository;
 import com.rahman.productservice.repository.TagRepository;
@@ -86,8 +83,9 @@ class ProductControllerSecuredTest {
                 CreateProductRequest request = new CreateProductRequest("Shampoo Korea Bagus",
                         "Ini shampo original Korea lohhh",
                         new BigDecimal(150000),
-                        100,
-                        UUID.randomUUID(), Set.of(UUID.randomUUID(), UUID.randomUUID()));
+                        100, ProductStatus.ACTIVE,
+                        UUID.randomUUID(),
+                        Set.of(UUID.randomUUID(), UUID.randomUUID()));
 
                 mockMvc.perform(post("/")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -100,7 +98,7 @@ class ProductControllerSecuredTest {
                 CreateProductRequest request = new CreateProductRequest("Shampoo Korea Bagus",
                         "Ini shampo original Korea lohhh",
                         new BigDecimal(150000),
-                        100,
+                        100, ProductStatus.ACTIVE,
                         UUID.randomUUID(), Set.of(UUID.randomUUID(), UUID.randomUUID()));
 
                 mockMvc.perform(post("/")
@@ -118,6 +116,7 @@ class ProductControllerSecuredTest {
                 productData.setDescription("Ini shampo original Korea lohhh");
                 productData.setPrice(new BigDecimal(150000));
                 productData.setStock(100);
+                productData.setStatus(ProductStatus.ACTIVE);
                 productData.setCreatedAt(Instant.now());
                 productData.setUpdatedAt(Instant.now());
 
@@ -146,13 +145,14 @@ class ProductControllerSecuredTest {
 
         @Test
         void testDeleteProduct_WhenNotAuthenticated_ReturnsUnauthorized() throws Exception {
-                //Prepare data
+
                 //Prepare data
                 Product productData = new Product();
                 productData.setName("Shampoo Korea Bagus");
                 productData.setDescription("Ini shampo original Korea lohhh");
                 productData.setPrice(new BigDecimal(150000));
                 productData.setStock(100);
+                productData.setStatus(ProductStatus.ACTIVE);
                 productData.setCreatedAt(Instant.now());
                 productData.setUpdatedAt(Instant.now());
 

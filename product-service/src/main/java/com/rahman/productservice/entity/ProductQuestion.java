@@ -45,7 +45,7 @@ public class ProductQuestion {
     private Instant answeredAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", columnDefinition = "question_status not null")
+    @Column(name = "status", nullable = false, length = 10)
     @ColumnDefault("'PENDING'")
     private QuestionStatus status;
 }

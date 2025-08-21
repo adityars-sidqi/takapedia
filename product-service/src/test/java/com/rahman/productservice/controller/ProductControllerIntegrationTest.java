@@ -108,6 +108,7 @@ class ProductControllerIntegrationTest {
                 product1.setDescription("Description shampoo korea bagus");
                 product1.setPrice(new BigDecimal(150000));
                 product1.setStock(100);
+                product1.setStatus(ProductStatus.ACTIVE);
                 product1.setCategory(category1);
 
                 Product product2 = new Product();
@@ -115,6 +116,7 @@ class ProductControllerIntegrationTest {
                 product2.setDescription("Description sabun korea bagus");
                 product2.setPrice(new BigDecimal(100000));
                 product2.setStock(100);
+                product2.setStatus(ProductStatus.ACTIVE);
                 product2.setCategory(category2);
 
                 productRepository.saveAll(List.of(product1, product2));
@@ -206,6 +208,7 @@ class ProductControllerIntegrationTest {
                         "Ini shampo original Korea lohhh",
                         new BigDecimal(150000),
                         100,
+                        ProductStatus.ACTIVE,
                         category1.getId(), Set.of(tag4.getId(), tag1.getId()));
 
                 HttpHeaders headers = new HttpHeaders();
@@ -238,7 +241,7 @@ class ProductControllerIntegrationTest {
                 assertThat(product.category().name()).isEqualTo("Shampoo");
 
                 // Validasi tags
-                List<String> tagNames = product.tag().stream()
+                List<String> tagNames = product.tags().stream()
                         .map(TagResponse::name)
                         .toList();
 
@@ -254,6 +257,7 @@ class ProductControllerIntegrationTest {
                         "Deskripsi valid",
                         BigDecimal.valueOf(100000),
                         10,
+                        ProductStatus.ACTIVE,
                         UUID.randomUUID(),
                         Set.of(UUID.randomUUID())
                 );
@@ -290,6 +294,7 @@ class ProductControllerIntegrationTest {
                 productData.setDescription("Ini shampo original Korea lohhh");
                 productData.setPrice(new BigDecimal(150000));
                 productData.setStock(100);
+                productData.setStatus(ProductStatus.ACTIVE);
                 productData.setCreatedAt(Instant.now());
                 productData.setUpdatedAt(Instant.now());
 

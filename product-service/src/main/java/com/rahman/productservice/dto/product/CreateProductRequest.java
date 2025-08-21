@@ -1,5 +1,6 @@
 package com.rahman.productservice.dto.product;
 
+import com.rahman.productservice.entity.ProductStatus;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -42,6 +43,9 @@ public record CreateProductRequest(
         @NotNull(message = "{product.stock.not_null}")
         @Min(value = 0, message = "{product.stock.min}")
         Integer stock,
+
+        @NotNull(message = "{product.status.not_null}")
+        ProductStatus status,
 
         @NotNull(message = "{product.category_id.not_null}")
         UUID categoryId,

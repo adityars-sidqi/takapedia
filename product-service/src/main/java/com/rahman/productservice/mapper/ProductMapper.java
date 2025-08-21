@@ -4,10 +4,7 @@ import com.rahman.productservice.dto.category.CategorySimpleResponse;
 import com.rahman.productservice.dto.product.CreateProductRequest;
 import com.rahman.productservice.dto.product.ProductResponse;
 import com.rahman.productservice.dto.tag.TagResponse;
-import com.rahman.productservice.entity.Category;
-import com.rahman.productservice.entity.Product;
-import com.rahman.productservice.entity.ProductTag;
-import com.rahman.productservice.entity.Tag;
+import com.rahman.productservice.entity.*;
 import org.mapstruct.Mapper;
 
 import java.util.List;
@@ -23,6 +20,7 @@ public interface ProductMapper {
                 product.getDescription(),
                 product.getPrice(),
                 product.getStock(),
+                product.getStatus(),
                 new CategorySimpleResponse(
                         product.getCategory().getId(),
                         product.getCategory().getName()
@@ -44,6 +42,7 @@ public interface ProductMapper {
         product.setDescription(request.description());
         product.setPrice(request.price());
         product.setStock(request.stock());
+        product.setStatus(request.status());
         product.setCategory(category);
 
         if (tags != null) {

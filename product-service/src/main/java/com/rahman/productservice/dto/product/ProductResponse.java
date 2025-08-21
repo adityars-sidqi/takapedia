@@ -2,6 +2,7 @@ package com.rahman.productservice.dto.product;
 
 import com.rahman.productservice.dto.category.CategorySimpleResponse;
 import com.rahman.productservice.dto.tag.TagResponse;
+import com.rahman.productservice.entity.ProductStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -14,8 +15,9 @@ public record ProductResponse(
         String description,
         BigDecimal price,
         Integer stock,
+        ProductStatus status,
         CategorySimpleResponse category,
-        List<TagResponse> tag,
+        List<TagResponse> tags,
         Instant createdAt,
         Instant updatedAt) {
 }

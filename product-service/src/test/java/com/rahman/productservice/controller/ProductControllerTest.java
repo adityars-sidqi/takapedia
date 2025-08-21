@@ -5,10 +5,7 @@ import com.rahman.productservice.dto.category.CategorySimpleResponse;
 import com.rahman.productservice.dto.product.CreateProductRequest;
 import com.rahman.productservice.dto.product.ProductResponse;
 import com.rahman.productservice.dto.tag.TagResponse;
-import com.rahman.productservice.entity.Category;
-import com.rahman.productservice.entity.Product;
-import com.rahman.productservice.entity.ProductTag;
-import com.rahman.productservice.entity.Tag;
+import com.rahman.productservice.entity.*;
 import com.rahman.productservice.mapper.ProductMapper;
 import com.rahman.productservice.service.ProductService;
 import org.junit.jupiter.api.Test;
@@ -74,6 +71,7 @@ class ProductControllerTest {
                         "Description shampoo korea bagus",
                         new BigDecimal(150000),
                         100,
+                        ProductStatus.ACTIVE,
                         new CategorySimpleResponse(UUID.randomUUID(), "Shampoo"),
                         List.of(new TagResponse(UUID.randomUUID(), "Bagus"),
                                 new TagResponse(UUID.randomUUID(), "Korea")),
@@ -84,6 +82,7 @@ class ProductControllerTest {
                         "Description Sabun korea bagus",
                         new BigDecimal(150000),
                         100,
+                        ProductStatus.ACTIVE,
                         new CategorySimpleResponse(UUID.randomUUID(), "Sabun"),
                         List.of(new TagResponse(UUID.randomUUID(), "Sabun"),
                                 new TagResponse(UUID.randomUUID(), "Korea")),
@@ -111,7 +110,7 @@ class ProductControllerTest {
                 CreateProductRequest request = new CreateProductRequest("Shampoo Korea Bagus",
                         "Ini shampo original Korea lohhh",
                         new BigDecimal(150000),
-                        100,
+                        100, ProductStatus.ACTIVE,
                         UUID.randomUUID(), Set.of(UUID.randomUUID(), UUID.randomUUID()));
 
                 Category categoryData = new Category();
@@ -133,6 +132,7 @@ class ProductControllerTest {
                 productData.setDescription("Ini shampo original Korea lohhh");
                 productData.setPrice(new BigDecimal(150000));
                 productData.setStock(100);
+                productData.setStatus(ProductStatus.ACTIVE);
                 productData.setCategory(categoryData);
                 productData.setCreatedAt(Instant.now());
                 productData.setUpdatedAt(Instant.now());
