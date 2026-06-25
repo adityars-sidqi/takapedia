@@ -1,0 +1,27 @@
+# Build artifacts
+target/
+build/
+*.class
+*.jar
+
+# Dependencies
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment & secrets
+.env
+*.local
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+
+# Podman/Docker volume data (kalau di-mount lokal)
+data/
