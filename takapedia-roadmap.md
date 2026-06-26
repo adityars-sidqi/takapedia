@@ -32,14 +32,14 @@ Belum sentuh Kafka atau microservices di fase ini.
 
 Target: kuasai siklus penuh membangun satu service Spring Boot. Belum ada Kafka, belum ada service kedua.
 
-- [ ] Setup project Spring Boot
-- [ ] Bikin REST API dasar
-- [ ] Terapkan API versioning sejak awal
-- [ ] OAuth2 / Session Management (Spring Security)
-- [ ] Registrasi & login
-- [ ] Terbitkan & validasi token
-- [ ] Koneksi ke PostgreSQL
-- [ ] **TDD: tulis test sebelum kode** (mulai kebiasaan ini sekarang)
+- [x] Setup project Spring Boot
+- [x] Bikin REST API dasar
+- [x] Terapkan API versioning sejak awal
+- [x] OAuth2 / Session Management (Spring Security)
+- [x] Registrasi & login
+- [x] Terbitkan & validasi token
+- [x] Koneksi ke PostgreSQL
+- [x] **TDD: tulis test sebelum kode** (mulai kebiasaan ini sekarang)
 
 Estimasi: 2–4 minggu. Wajar terasa lambat — ini investasi fondasi.
 
