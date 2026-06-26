@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.MediaType;
 import org.springframework.security.converter.RsaKeyConverters;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -17,6 +18,7 @@ import java.util.Date;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -36,11 +38,11 @@ class ProductSecurityIntegrationTest {
         }
     }
 
-    private String validToken() {
+    private String tokenWithRole(String role) {
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .subject("user-123")
-                .claim("role", "USER")
+                .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 900_000))
                 .signWith(privateKey)
@@ -48,29 +50,67 @@ class ProductSecurityIntegrationTest {
     }
 
     @Test
-    void request_withoutToken_returns401() throws Exception {
-        mockMvc.perform(get("/api/v1/products/{id}", UUID.randomUUID()))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
     void request_withValidToken_isNotRejectedByAuth() throws Exception {
         mockMvc.perform(get("/api/v1/products/{id}", UUID.randomUUID())
-                        .header("Authorization", "Bearer " + validToken()))
+                        .header("Authorization", "Bearer " + tokenWithRole("USER")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void request_withMalformedToken_returns401() throws Exception {
-        mockMvc.perform(get("/api/v1/products/{id}", UUID.randomUUID())
-                        .header("Authorization", "Bearer token.tidak.valid"))
+    void addProduct_withMalformedToken_returns401() throws Exception {
+        mockMvc.perform(post("/api/v1/products")
+                        .header("Authorization", "Bearer token.tidak.valid")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void request_withInvalidUuid_returns400() throws Exception {
         mockMvc.perform(get("/api/v1/products/{id}", "bukan-uuid-valid")
-                        .header("Authorization", "Bearer " + validToken()))
+                        .header("Authorization", "Bearer " + tokenWithRole("USER")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getCatalog_withoutToken_isPublic() throws Exception {
+        mockMvc.perform(get("/api/v1/products/{id}", UUID.randomUUID()))
+                .andExpect(status().isNotFound());   // lolos security, produk acak tak ada
+    }
+
+    @Test
+    void getCatalog_withValidToken_stillWorks() throws Exception {
+        mockMvc.perform(get("/api/v1/products/{id}", UUID.randomUUID())
+                        .header("Authorization", "Bearer " + tokenWithRole("USER")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void addProduct_withoutToken_returns401() throws Exception {
+        mockMvc.perform(post("/api/v1/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void addProduct_withUserRole_returns403() throws Exception {
+        String validBody = """
+        {"name":"Laptop","description":"Gaming laptop","price":15000000.00}
+        """;
+        mockMvc.perform(post("/api/v1/products")
+                        .header("Authorization", "Bearer " + tokenWithRole("USER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validBody))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void addProduct_withAdminRole_passesAuthorization() throws Exception {
+        mockMvc.perform(post("/api/v1/products")
+                        .header("Authorization", "Bearer " + tokenWithRole("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());   // lolos @PreAuthorize, kena validasi body
     }
 }

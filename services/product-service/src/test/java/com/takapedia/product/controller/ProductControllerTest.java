@@ -5,6 +5,7 @@ import com.takapedia.product.dto.ProductResponse;
 import com.takapedia.product.dto.UpdateProductRequest;
 import com.takapedia.product.entity.Product;
 import com.takapedia.product.exception.ProductNotFoundException;
+import com.takapedia.product.security.JwtService;
 import com.takapedia.product.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,9 @@ class ProductControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private JwtService jwtService;
 
     @MockitoBean
     private ProductService productService;
