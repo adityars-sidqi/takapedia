@@ -49,12 +49,12 @@ Estimasi: 2–4 minggu. Wajar terasa lambat — ini investasi fondasi.
 
 Target: dua service yang saling bicara lewat REST.
 
-- [ ] Bangun Product Catalog Service
-- [ ] Sambungkan Product ke Auth lewat REST (komunikasi sinkron)
+- [x] Bangun Product Catalog Service
+- [x] Sambungkan Product ke Auth lewat REST (komunikasi sinkron)
 - [ ] Setup API Gateway
 - [ ] Pasang routing di Gateway
 - [ ] Pasang **Rate Limiter** di Gateway
-- [ ] Validasi token dari Auth di setiap request
+- [x] Validasi token dari Auth di setiap request
 
 Saat pertama merasa "kok ribet" — itu memang pelajarannya.
 
