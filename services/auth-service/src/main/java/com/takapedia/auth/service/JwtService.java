@@ -3,12 +3,17 @@ package com.takapedia.auth.service;
 import com.takapedia.auth.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.security.converter.RsaKeyConverters;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
@@ -16,14 +21,21 @@ import java.util.UUID;
 @Service
 public class JwtService {
 
-    private final SecretKey signingKey;
+    private final PrivateKey privateKey;
+    private final PublicKey publicKey;
     private final long expirationMs;
 
     public JwtService(
-            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.private-key}") Resource privateKeyResource,
+            @Value("${jwt.public-key}") Resource publicKeyResource,
             @Value("${jwt.expiration-ms}") long expirationMs
-    ) {
-        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    ) throws IOException {
+        try (InputStream privateStream = privateKeyResource.getInputStream()) {
+            this.privateKey = RsaKeyConverters.pkcs8().convert(privateStream);
+        }
+        try (InputStream publicStream = publicKeyResource.getInputStream()) {
+            this.publicKey = RsaKeyConverters.x509().convert(publicStream);
+        }
         this.expirationMs = expirationMs;
     }
 
@@ -32,12 +44,12 @@ public class JwtService {
         Instant expiry = now.plusMillis(expirationMs);
 
         return Jwts.builder()
-                .id(UUID.randomUUID().toString())          // jti — benih untuk Redis nanti
-                .subject(String.valueOf(user.getId()))     // sub — user id, bukan email
-                .claim("role", user.getRole())             // untuk otorisasi di Fase 2
-                .issuedAt(Date.from(now))                  // iat
-                .expiration(Date.from(expiry))             // exp
-                .signWith(signingKey)
+                .id(UUID.randomUUID().toString())
+                .subject(String.valueOf(user.getId()))
+                .claim("role", user.getRole())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiry))
+                .signWith(privateKey)
                 .compact();
     }
 
@@ -51,7 +63,7 @@ public class JwtService {
 
     public boolean isTokenValid(String token) {
         try {
-            parseClaims(token);   // gagal kalau signature salah atau sudah expired
+            parseClaims(token);
             return true;
         } catch (Exception e) {
             return false;
@@ -64,11 +76,9 @@ public class JwtService {
 
     private Claims parseClaims(String token) {
         return Jwts.parser()
-                .verifyWith(signingKey)
+                .verifyWith(publicKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
     }
-
-
 }

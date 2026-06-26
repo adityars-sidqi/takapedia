@@ -25,3 +25,7 @@ Thumbs.db
 
 # Podman/Docker volume data (kalau di-mount lokal)
 data/
+
+
+# RSA private keys — JANGAN pernah commit
+**/private_key.pem

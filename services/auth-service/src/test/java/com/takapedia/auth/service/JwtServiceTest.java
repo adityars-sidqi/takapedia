@@ -3,29 +3,26 @@ package com.takapedia.auth.service;
 import com.takapedia.auth.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@ActiveProfiles("test")
 class JwtServiceTest {
 
-    @Value("${jwt.secret}")
-    private String secret;
-
-    @Value("${jwt.expiration-ms}")
-    private long expirationMs;
+    private static final long EXPIRATION_MS = 900_000L;
 
     private JwtService jwtService;
 
     @BeforeEach
-    void setUp() {
-        jwtService = new JwtService(secret, expirationMs);
+    void setUp() throws Exception {
+        jwtService = new JwtService(
+                new ClassPathResource("keys/private_key.pem"),
+                new ClassPathResource("keys/public_key.pem"),
+                EXPIRATION_MS
+        );
     }
 
     private User sampleUser() {
@@ -41,7 +38,8 @@ class JwtServiceTest {
         String token = jwtService.generateToken(sampleUser());
 
         assertThat(token).isNotBlank();
-        assertThat(jwtService.extractUserId(token)).isEqualTo("550e8400-e29b-41d4-a716-446655440000");
+        assertThat(jwtService.extractUserId(token))
+                .isEqualTo("550e8400-e29b-41d4-a716-446655440000");
     }
 
     @Test
@@ -62,17 +60,24 @@ class JwtServiceTest {
     }
 
     @Test
-    void shouldRejectTokenSignedWithDifferentSecret() {
-        JwtService otherService = new JwtService(
-                "secret-lain-yang-juga-minimal-32-byte-untuk-HS256-aman", expirationMs);
-        String forgedToken = otherService.generateToken(sampleUser());
+    void shouldRejectTokenSignedWithDifferentKey() throws Exception {
+        JwtService attackerService = new JwtService(
+                new ClassPathResource("keys/attacker_private_key.pem"),
+                new ClassPathResource("keys/attacker_public_key.pem"),
+                EXPIRATION_MS
+        );
+        String forgedToken = attackerService.generateToken(sampleUser());
 
         assertThat(jwtService.isTokenValid(forgedToken)).isFalse();
     }
 
     @Test
-    void shouldRejectExpiredToken() {
-        JwtService shortLivedService = new JwtService(secret, -1000L); // sudah lewat 1 detik
+    void shouldRejectExpiredToken() throws Exception {
+        JwtService shortLivedService = new JwtService(
+                new ClassPathResource("keys/private_key.pem"),
+                new ClassPathResource("keys/public_key.pem"),
+                -1000L
+        );
         String expiredToken = shortLivedService.generateToken(sampleUser());
 
         assertThat(jwtService.isTokenValid(expiredToken)).isFalse();
