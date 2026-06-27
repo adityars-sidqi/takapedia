@@ -20,3 +20,5 @@ services:
     url: http://localhost:8081
   product:
     url: http://localhost:8082
+jwt:
+  public-key: classpath:keys/public_key.pem
