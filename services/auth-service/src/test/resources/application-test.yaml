@@ -1,3 +1,0 @@
-jwt:
-  secret: test-secret-key-minimal-32-byte-khusus-untuk-testing-saja
-  expiration-ms: 900000

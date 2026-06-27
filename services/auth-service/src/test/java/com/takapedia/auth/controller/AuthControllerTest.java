@@ -7,6 +7,7 @@ import com.takapedia.auth.entity.User;
 import com.takapedia.auth.exception.EmailAlreadyExistsException;
 import com.takapedia.auth.exception.InvalidCredentialsException;
 import com.takapedia.auth.service.AuthService;
+import com.takapedia.auth.service.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -36,6 +37,9 @@ public class AuthControllerTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private JwtService jwtService;
 
     @Test
     void shouldRegisterUserAndReturn201() throws Exception {
