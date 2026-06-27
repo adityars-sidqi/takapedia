@@ -51,9 +51,9 @@ Target: dua service yang saling bicara lewat REST.
 
 - [x] Bangun Product Catalog Service
 - [x] Sambungkan Product ke Auth lewat REST (komunikasi sinkron)
-- [ ] Setup API Gateway
-- [ ] Pasang routing di Gateway
-- [ ] Pasang **Rate Limiter** di Gateway
+- [x] Setup API Gateway
+- [x] Pasang routing di Gateway
+- [x] Pasang **Rate Limiter** di Gateway
 - [x] Validasi token dari Auth di setiap request
 
 Saat pertama merasa "kok ribet" — itu memang pelajarannya.
