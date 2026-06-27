@@ -3,6 +3,7 @@ package com.takapedia.order.service;
 import com.takapedia.order.entity.Order;
 import com.takapedia.order.entity.OrderStatus;
 import com.takapedia.order.event.OrderCreatedEvent;
+import com.takapedia.order.event.OrderEventPublisher;
 import com.takapedia.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,9 +28,10 @@ public class OrderService {
         OrderCreatedEvent event = new OrderCreatedEvent(
                 savedOrder.getId(),
                 savedOrder.getProductId(),
-                savedOrder.getQuantity()
+                savedOrder.getQuantity(),
+                savedOrder.getCreatedAt()
         );
-        orderEventPublisher.publishOrderCreated(event);
+        orderEventPublisher.publish(event);
 
         return savedOrder;
     }

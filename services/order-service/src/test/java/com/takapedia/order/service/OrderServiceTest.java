@@ -3,6 +3,7 @@ package com.takapedia.order.service;
 import com.takapedia.order.entity.Order;
 import com.takapedia.order.entity.OrderStatus;
 import com.takapedia.order.event.OrderCreatedEvent;
+import com.takapedia.order.event.OrderEventPublisher;
 import com.takapedia.order.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,7 +55,7 @@ class OrderServiceTest {
         // 2. Event diterbitkan dengan data yang benar
         ArgumentCaptor<OrderCreatedEvent> eventCaptor =
                 ArgumentCaptor.forClass(OrderCreatedEvent.class);
-        verify(orderEventPublisher).publishOrderCreated(eventCaptor.capture());
+        verify(orderEventPublisher).publish(eventCaptor.capture());
         OrderCreatedEvent event = eventCaptor.getValue();
         assertThat(event.orderId()).isEqualTo(result.getId());
         assertThat(event.productId()).isEqualTo(productId);

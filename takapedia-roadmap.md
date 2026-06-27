@@ -64,10 +64,10 @@ Saat pertama merasa "kok ribet" — itu memang pelajarannya.
 
 Target: jantung project. Service terhubung lewat event, bukan REST. Mulai dari SATU event saja.
 
-- [ ] Bangun Order Service
+- [x] Bangun Order Service
 - [ ] Bangun Inventory Service
-- [ ] Setup Kafka (lewat Docker Compose)
-- [ ] Buat producer di Order Service
+- [x] Setup Kafka (lewat Docker Compose)
+- [x] Buat producer di Order Service
 - [ ] Buat consumer di Inventory Service
 - [ ] Event pertama: `OrderCreated` -> Inventory kurangi stok
 - [ ] (Opsional) Tulis Inventory pakai **Go** untuk merasakan perbandingannya
