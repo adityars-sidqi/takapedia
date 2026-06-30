@@ -1,0 +1,20 @@
+{
+  "name": "product-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "takapedia-postgres",
+    "database.port": "5432",
+    "database.user": "takapedia",
+    "database.password": "takapedia_dev",
+    "database.dbname": "product_db",
+    "topic.prefix": "takapedia",
+    "table.include.list": "public.products",
+    "plugin.name": "pgoutput",
+    "slot.name": "debezium_product_slot",
+    "publication.name": "debezium_product_pub",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "false"
+  }
+}
