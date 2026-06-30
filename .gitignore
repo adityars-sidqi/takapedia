@@ -31,3 +31,9 @@ data/
 **/private_key.pem
 
 infra/connect-plugins/
+
+# Private keys — never commit (test keys regenerated locally)
+**/test_private_key.pem
+**/attacker_private_key.pem
+*.pem
+test_private_key.pem
