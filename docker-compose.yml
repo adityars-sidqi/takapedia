@@ -80,6 +80,9 @@ services:
       STATUS_STORAGE_TOPIC: connect_statuses
       KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_PLUGIN_PATH: "/kafka/connect,/kafka/connect-plugins"
+    volumes:
+      - ./infra/connect-plugins:/kafka/connect-plugins
     depends_on:
       - kafka
 

@@ -29,3 +29,5 @@ data/
 
 # RSA private keys — JANGAN pernah commit
 **/private_key.pem
+
+infra/connect-plugins/
