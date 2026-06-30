@@ -20,7 +20,7 @@ func main() {
 		"host=localhost user=takapedia password=takapedia_dev dbname=inventory_db port=5432 sslmode=disable")
 	brokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ",")
 	topic := getEnv("KAFKA_TOPIC", "order.created")
-	groupID := getEnv("KAFKA_GROUP_ID", "inventory-service-v2")
+	groupID := getEnv("KAFKA_GROUP_ID", "inventory-service")
 
 	// --- Koneksi database (GORM) ---
 	// TranslateError: true WAJIB agar gorm.ErrDuplicatedKey terdeteksi.
