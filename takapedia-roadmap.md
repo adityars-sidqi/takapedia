@@ -65,12 +65,12 @@ Saat pertama merasa "kok ribet" — itu memang pelajarannya.
 Target: jantung project. Service terhubung lewat event, bukan REST. Mulai dari SATU event saja.
 
 - [x] Bangun Order Service
-- [ ] Bangun Inventory Service
+- [x] Bangun Inventory Service
 - [x] Setup Kafka (lewat Docker Compose)
 - [x] Buat producer di Order Service
-- [ ] Buat consumer di Inventory Service
-- [ ] Event pertama: `OrderCreated` -> Inventory kurangi stok
-- [ ] (Opsional) Tulis Inventory pakai **Go** untuk merasakan perbandingannya
+- [x] Buat consumer di Inventory Service
+- [x] Event pertama: `OrderCreated` -> Inventory kurangi stok
+- [x] (Opsional) Tulis Inventory pakai **Go** untuk merasakan perbandingannya
 
 Pahami betul satu event ini sebelum menambah event lain.
 
@@ -80,9 +80,9 @@ Pahami betul satu event ini sebelum menambah event lain.
 
 Target: pisahkan write-model dan read-model di Product Service.
 
-- [ ] Setup ElasticSearch / OpenSearch
-- [ ] Pisahkan write-model (PostgreSQL) dan read-model (ElasticSearch)
-- [ ] Sinkronkan read-model lewat event (Kafka dari Fase 3 dipakai ulang)
+- [x] Setup ElasticSearch / OpenSearch
+- [x] Pisahkan write-model (PostgreSQL) dan read-model (ElasticSearch)
+- [x] Sinkronkan read-model lewat event (Kafka dari Fase 3 dipakai ulang)
 - [ ] Integrasi fitur search produk
 - [ ] Uji konsistensi antara write dan read model
 
