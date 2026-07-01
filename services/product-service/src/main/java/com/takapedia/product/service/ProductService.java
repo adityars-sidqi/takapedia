@@ -19,6 +19,7 @@ public class ProductService {
         this.productRepository = productRepository;
     }
 
+    @Deprecated
     public Product getById(UUID id) {
         return productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
     }

@@ -23,6 +23,7 @@ public class ProductController {
         this.productService = productService;
     }
 
+    @Deprecated
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getById(@PathVariable UUID id) {
         Product product = productService.getById(id);
