@@ -1,9 +1,7 @@
 package com.takapedia.order.controller;
 
-import com.takapedia.order.dto.OrderResponse;
 import com.takapedia.order.entity.Order;
 import com.takapedia.order.entity.OrderStatus;
-import com.takapedia.order.security.JwtService;
 import com.takapedia.order.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +24,6 @@ class OrderControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @MockitoBean
-    private JwtService jwtService;
 
     @MockitoBean
     private OrderService orderService;

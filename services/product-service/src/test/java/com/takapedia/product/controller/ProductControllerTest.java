@@ -1,17 +1,14 @@
 package com.takapedia.product.controller;
 
 import com.takapedia.product.dto.CreateProductRequest;
-import com.takapedia.product.dto.ProductResponse;
 import com.takapedia.product.dto.UpdateProductRequest;
 import com.takapedia.product.entity.Product;
 import com.takapedia.product.exception.ProductNotFoundException;
-import com.takapedia.product.security.JwtService;
 import com.takapedia.product.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,9 +34,6 @@ class ProductControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private JwtService jwtService;
-
-    @MockitoBean
     private ProductService productService;
 
     @Autowired
@@ -50,7 +44,8 @@ class ProductControllerTest {
         UUID id = UUID.randomUUID();
         Product product = new Product(
                 id, "Laptop", "Gaming laptop",
-                new BigDecimal("15000000.00"), Instant.now()
+                new BigDecimal("15000000.00"),
+                "Electronics", "Asus", Instant.now()
         );
         when(productService.getById(id)).thenReturn(product);
 
@@ -73,11 +68,13 @@ class ProductControllerTest {
     void add_whenValidRequest_returns201() throws Exception {
         UUID id = UUID.randomUUID();
         CreateProductRequest request = new CreateProductRequest(
-                "Laptop", "Gaming laptop", new BigDecimal("15000000.00")
+                "Laptop", "Gaming laptop", new BigDecimal("15000000.00"),
+                "Electronics", "Asus"
         );
         Product saved = new Product(
                 id, "Laptop", "Gaming laptop",
-                new BigDecimal("15000000.00"), Instant.now()
+                new BigDecimal("15000000.00"), "Electronics", "Asus",
+                Instant.now()
         );
         when(productService.add(any(CreateProductRequest.class))).thenReturn(saved);
 
@@ -91,7 +88,8 @@ class ProductControllerTest {
     @Test
     void add_whenInvalidRequest_returns400() throws Exception {
         CreateProductRequest invalid = new CreateProductRequest(
-                "", "Gaming laptop", new BigDecimal("-100")
+                "", "Gaming laptop", new BigDecimal("-100"),
+                "Electronics", "Asus"
         );
 
         mockMvc.perform(post("/api/v1/products")
@@ -104,11 +102,13 @@ class ProductControllerTest {
     void update_whenValidRequest_returns200() throws Exception {
         UUID id = UUID.randomUUID();
         UpdateProductRequest request = new UpdateProductRequest(
-                "Laptop Pro", "Updated", new BigDecimal("20000000.00")
+                "Laptop Pro", "Updated", new BigDecimal("20000000.00"),
+                "Electronics", "Asus"
         );
         Product updated = new Product(
                 id, "Laptop Pro", "Updated",
-                new BigDecimal("20000000.00"), Instant.now()
+                new BigDecimal("20000000.00"), "Electronics", "Asus",
+                Instant.now()
         );
         when(productService.update(eq(id), any(UpdateProductRequest.class))).thenReturn(updated);
 
@@ -123,7 +123,8 @@ class ProductControllerTest {
     void update_whenProductNotFound_returns404() throws Exception {
         UUID id = UUID.randomUUID();
         UpdateProductRequest request = new UpdateProductRequest(
-                "Laptop Pro", "Updated", new BigDecimal("20000000.00")
+                "Laptop Pro", "Updated", new BigDecimal("20000000.00"),
+                "Electronics", "Asus"
         );
         when(productService.update(eq(id), any(UpdateProductRequest.class)))
                 .thenThrow(new ProductNotFoundException(id));

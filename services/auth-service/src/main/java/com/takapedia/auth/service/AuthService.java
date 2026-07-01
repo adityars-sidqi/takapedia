@@ -16,26 +16,25 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
+    private final JwtService jwtService;   // tambah
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwtService) {   // tambah
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
+        this.jwtService = jwtService;   // tambah
     }
 
     public User register(RegisterRequest registerRequest) {
-
-        if(userRepository.findByEmail(registerRequest.email()).isPresent()){
+        if (userRepository.findByEmail(registerRequest.email()).isPresent()) {
             throw new EmailAlreadyExistsException(registerRequest.email());
         }
-
         User user = new User();
         user.setEmail(registerRequest.email());
         user.setPassword(passwordEncoder.encode(registerRequest.password()));
         user.setRole("USER");
         user.setCreatedAt(Instant.now());
-
         return userRepository.save(user);
     }
 
@@ -47,7 +46,6 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
-        return jwtService.generateToken(user);
+        return jwtService.generateToken(user);   // ← generate token, bukan null
     }
-
 }
