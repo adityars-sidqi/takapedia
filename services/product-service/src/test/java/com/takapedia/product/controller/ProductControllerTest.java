@@ -1,17 +1,14 @@
 package com.takapedia.product.controller;
 
 import com.takapedia.product.dto.CreateProductRequest;
-import com.takapedia.product.dto.ProductResponse;
 import com.takapedia.product.dto.UpdateProductRequest;
 import com.takapedia.product.entity.Product;
 import com.takapedia.product.exception.ProductNotFoundException;
-import com.takapedia.product.security.JwtService;
 import com.takapedia.product.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;

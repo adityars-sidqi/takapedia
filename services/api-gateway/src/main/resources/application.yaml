@@ -1,6 +1,11 @@
 spring:
   application:
     name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8081/.well-known/jwks.json
   cloud:
     gateway:
       server:
@@ -16,6 +21,18 @@ spring:
               predicates:
                 - Path=/api/v1/products/**
                 - Method=POST,PUT,DELETE
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 5
+                    redis-rate-limiter.burstCapacity: 10
+                    redis-rate-limiter.requestedTokens: 1
+                    key-resolver: "#{@userKeyResolver}"
+
+            - id: order-service
+              uri: ${services.order.url}
+              predicates:
+                - Path=/api/v1/orders/**
               filters:
                 - name: RequestRateLimiter
                   args:
@@ -42,7 +59,7 @@ services:
     url: http://localhost:8081
   product:
     url: http://localhost:8082
+  order:
+    url: http://localhost:8086
   product-search:
     url: http://localhost:8085
-jwt:
-  public-key: classpath:keys/public_key.pem

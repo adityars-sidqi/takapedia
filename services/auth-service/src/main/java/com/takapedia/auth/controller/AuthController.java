@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -40,10 +42,9 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<MeResponse> me(Authentication authentication) {
-        String userId = authentication.getName();   // principal yang diisi filter
-        String role = authentication.getAuthorities().iterator().next()
-                .getAuthority().replace("ROLE_", "");
+    public ResponseEntity<MeResponse> me(@AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt.getSubject();
+        String role = jwt.getClaim("role");
 
         return ResponseEntity.ok(new MeResponse(userId, role));
     }
