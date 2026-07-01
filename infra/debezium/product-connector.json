@@ -1,5 +1,5 @@
 {
-  "name": "product-connector-v2",
+  "name": "product-connector-v4",
   "config": {
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
     "database.hostname": "takapedia-postgres",
@@ -10,8 +10,8 @@
     "topic.prefix": "takapedia",
     "table.include.list": "public.products",
     "plugin.name": "pgoutput",
-    "slot.name": "debezium_product_slot_v2",
-    "publication.name": "debezium_product_pub_v2",
+    "slot.name": "debezium_product_slot_v4",
+    "publication.name": "debezium_product_pub_v4",
     "decimal.handling.mode": "double",
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",

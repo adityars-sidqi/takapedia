@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: product-search-service
+  elasticsearch:
+    uris: http://localhost:9200
