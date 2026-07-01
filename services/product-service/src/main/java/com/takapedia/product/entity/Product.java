@@ -32,6 +32,12 @@ public class Product {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal price;
 
+    @Column
+    private String category;
+
+    @Column
+    private String brand;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 }

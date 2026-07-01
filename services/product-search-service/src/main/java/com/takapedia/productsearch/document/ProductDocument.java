@@ -20,7 +20,13 @@ public class ProductDocument {
     private String description;
 
     @Field(type = FieldType.Double)
-    private Double price;
+    private Long price;
+
+    @Field(type = FieldType.Text)
+    private String category;
+
+    @Field(type = FieldType.Text)
+    private String brand;
 
     @Field(name = "created_at", type = FieldType.Text)
     private String createdAt;

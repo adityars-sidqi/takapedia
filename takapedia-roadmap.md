@@ -83,8 +83,8 @@ Target: pisahkan write-model dan read-model di Product Service.
 - [x] Setup ElasticSearch / OpenSearch
 - [x] Pisahkan write-model (PostgreSQL) dan read-model (ElasticSearch)
 - [x] Sinkronkan read-model lewat event (Kafka dari Fase 3 dipakai ulang)
-- [ ] Integrasi fitur search produk
-- [ ] Uji konsistensi antara write dan read model
+- [x] Integrasi fitur search produk
+- [x] Uji konsistensi antara write dan read model
 
 ---
 

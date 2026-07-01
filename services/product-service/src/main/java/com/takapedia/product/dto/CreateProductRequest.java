@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 public record CreateProductRequest(
         @NotBlank String name,
         String description,
-        @NotNull @Positive BigDecimal price
+        @NotNull @Positive BigDecimal price,
+        String category,
+        String brand
 ) {
 }

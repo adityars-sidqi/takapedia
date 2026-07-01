@@ -28,6 +28,8 @@ public class ProductService {
         product.setName(request.name());
         product.setDescription(request.description());
         product.setPrice(request.price());
+        product.setCategory(request.category());
+        product.setBrand(request.brand());
         product.setCreatedAt(Instant.now());
         return productRepository.save(product);
     }
@@ -37,6 +39,8 @@ public class ProductService {
         product.setName(request.name());
         product.setDescription(request.description());
         product.setPrice(request.price());
+        product.setCategory(request.category());
+        product.setBrand(request.brand());
         return productRepository.save(product);
     }
 
