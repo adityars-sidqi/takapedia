@@ -2,6 +2,7 @@ package com.takapedia.order.service;
 
 import com.takapedia.order.entity.Order;
 import com.takapedia.order.entity.OrderStatus;
+import com.takapedia.order.entity.PaymentMethod;
 import com.takapedia.order.event.OrderCreatedEvent;
 import com.takapedia.order.event.OrderEventPublisher;
 import com.takapedia.order.repository.OrderRepository;
@@ -34,6 +35,7 @@ class OrderServiceTest {
     void createOrder_savesWaitingPaymentOrderAndPublishesEvent() {
         UUID productId = UUID.randomUUID();
         int quantity = 3;
+        PaymentMethod paymentMethod = PaymentMethod.BCA_VA;
 
         // repository.save mengembalikan order dengan id ter-generate
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
@@ -42,7 +44,7 @@ class OrderServiceTest {
             return toSave;
         });
 
-        Order result = orderService.createOrder(productId, quantity);
+        Order result = orderService.createOrder(productId, quantity, paymentMethod);
 
         // 1. Order tersimpan dengan status PENDING
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
@@ -51,6 +53,7 @@ class OrderServiceTest {
         assertThat(saved.getProductId()).isEqualTo(productId);
         assertThat(saved.getQuantity()).isEqualTo(quantity);
         assertThat(saved.getStatus()).isEqualTo(OrderStatus.WAITING_PAYMENT);
+        assertThat(saved.getPaymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
 
         // 2. Event diterbitkan dengan data yang benar
         ArgumentCaptor<OrderCreatedEvent> eventCaptor =
@@ -60,5 +63,6 @@ class OrderServiceTest {
         assertThat(event.orderId()).isEqualTo(result.getId());
         assertThat(event.productId()).isEqualTo(productId);
         assertThat(event.quantity()).isEqualTo(quantity);
+        assertThat(event.paymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
     }
 }

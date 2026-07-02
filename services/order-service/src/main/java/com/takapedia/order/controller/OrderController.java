@@ -19,7 +19,11 @@ public class OrderController {
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     public OrderResponse createOrder(@Valid @RequestBody CreateOrderRequest request) {
-        Order order = orderService.createOrder(request.productId(), request.quantity());
+        Order order = orderService.createOrder(
+                request.productId(),
+                request.quantity(),
+                request.paymentMethod()
+        );
         return OrderResponse.from(order);
     }
 }

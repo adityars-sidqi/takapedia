@@ -2,6 +2,7 @@ package com.takapedia.order.controller;
 
 import com.takapedia.order.entity.Order;
 import com.takapedia.order.entity.OrderStatus;
+import com.takapedia.order.entity.PaymentMethod;
 import com.takapedia.order.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,13 +40,15 @@ class OrderControllerTest {
         saved.setProductId(productId);
         saved.setQuantity(3);
         saved.setStatus(OrderStatus.WAITING_PAYMENT);
+        saved.setPaymentMethod(PaymentMethod.BCA_VA);
 
-        when(orderService.createOrder(any(UUID.class), anyInt())).thenReturn(saved);
+        when(orderService.createOrder(any(UUID.class), anyInt(), any(PaymentMethod.class))).thenReturn(saved);
 
         String body = """
                 {
                   "productId": "%s",
-                  "quantity": 3
+                  "quantity": 3,
+                  "paymentMethod": "BCA_VA"
                 }
                 """.formatted(productId);
 
@@ -66,7 +69,8 @@ class OrderControllerTest {
         String body = """
                 {
                   "productId": "%s",
-                  "quantity": 0
+                  "quantity": 0,
+                  "paymentMethod": "BCA_VA"
                 }
                 """.formatted(productId);
 

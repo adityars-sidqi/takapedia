@@ -1,5 +1,6 @@
 package com.takapedia.order.event;
 
+import com.takapedia.order.entity.PaymentMethod;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +43,7 @@ class KafkaOrderEventPublisherTest {
         UUID orderId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         Instant occurredAt = Instant.parse("2026-01-01T00:00:00Z");
-        OrderCreatedEvent event = new OrderCreatedEvent(orderId, productId, 3, occurredAt);
+        OrderCreatedEvent event = new OrderCreatedEvent(orderId, productId, 3, PaymentMethod.BCA_VA, occurredAt);
 
         // when
         publisher.publish(event);
@@ -56,5 +57,6 @@ class KafkaOrderEventPublisherTest {
         assertThat(deserialized.productId()).isEqualTo(productId);
         assertThat(deserialized.quantity()).isEqualTo(3);
         assertThat(deserialized.occurredAt()).isEqualTo(occurredAt);
+        assertThat(deserialized.paymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
     }
 }

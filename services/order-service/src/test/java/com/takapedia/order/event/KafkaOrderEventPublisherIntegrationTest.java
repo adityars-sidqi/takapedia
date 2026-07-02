@@ -1,5 +1,6 @@
 package com.takapedia.order.event;
 
+import com.takapedia.order.entity.PaymentMethod;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -52,7 +53,7 @@ class KafkaOrderEventPublisherIntegrationTest {
         UUID orderId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         Instant occurredAt = Instant.parse("2026-01-01T00:00:00Z");
-        OrderCreatedEvent event = new OrderCreatedEvent(orderId, productId, 3, occurredAt);
+        OrderCreatedEvent event = new OrderCreatedEvent(orderId, productId, 3, PaymentMethod.BCA_VA, occurredAt);
 
         // when — publish lewat adapter sungguhan
         orderEventPublisher.publish(event);
@@ -74,6 +75,7 @@ class KafkaOrderEventPublisherIntegrationTest {
             assertThat(received.productId()).isEqualTo(productId);
             assertThat(received.quantity()).isEqualTo(3);
             assertThat(received.occurredAt()).isEqualTo(occurredAt);
+            assertThat(received.paymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
         });
 
         consumer.close();
