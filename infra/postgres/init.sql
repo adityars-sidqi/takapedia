@@ -5,5 +5,6 @@ CREATE DATABASE auth_db;
 CREATE DATABASE product_db;
 CREATE DATABASE order_db;
 CREATE DATABASE inventory_db;
+CREATE DATABASE payment_db;
 
 -- Catatan: database lain bisa ditambah seiring fase berjalan
