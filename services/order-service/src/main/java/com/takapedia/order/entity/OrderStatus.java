@@ -1,5 +1,7 @@
 package com.takapedia.order.entity;
 
 public enum OrderStatus {
-    PENDING
+    WAITING_PAYMENT,
+    PAID,
+    PAYMENT_FAILED
 }

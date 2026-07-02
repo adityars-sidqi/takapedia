@@ -10,5 +10,9 @@ spring:
       ddl-auto: create-drop
     database-platform: org.hibernate.dialect.H2Dialect
 
-jwt:
-  public-key: classpath:keys/public_key.pem
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:9999/mock-jwks
+

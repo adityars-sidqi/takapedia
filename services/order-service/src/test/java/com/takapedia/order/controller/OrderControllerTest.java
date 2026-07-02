@@ -38,7 +38,7 @@ class OrderControllerTest {
         saved.setId(orderId);
         saved.setProductId(productId);
         saved.setQuantity(3);
-        saved.setStatus(OrderStatus.PENDING);
+        saved.setStatus(OrderStatus.WAITING_PAYMENT);
 
         when(orderService.createOrder(any(UUID.class), anyInt())).thenReturn(saved);
 
@@ -55,7 +55,7 @@ class OrderControllerTest {
                         .content(body))
                 .andExpect(status().isAccepted())                    // 202
                 .andExpect(jsonPath("$.orderId").value(orderId.toString()))
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(jsonPath("$.status").value("WAITING_PAYMENT"));
     }
 
     @Test

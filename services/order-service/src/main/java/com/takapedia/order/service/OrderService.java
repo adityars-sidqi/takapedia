@@ -21,7 +21,7 @@ public class OrderService {
         Order order = new Order();
         order.setProductId(productId);
         order.setQuantity(quantity);
-        order.setStatus(OrderStatus.PENDING);
+        order.setStatus(OrderStatus.WAITING_PAYMENT);
 
         Order savedOrder = orderRepository.save(order);
 

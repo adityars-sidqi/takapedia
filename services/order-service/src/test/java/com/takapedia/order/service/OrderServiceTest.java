@@ -31,7 +31,7 @@ class OrderServiceTest {
     private OrderService orderService;
 
     @Test
-    void createOrder_savesPendingOrderAndPublishesEvent() {
+    void createOrder_savesWaitingPaymentOrderAndPublishesEvent() {
         UUID productId = UUID.randomUUID();
         int quantity = 3;
 
@@ -50,7 +50,7 @@ class OrderServiceTest {
         Order saved = orderCaptor.getValue();
         assertThat(saved.getProductId()).isEqualTo(productId);
         assertThat(saved.getQuantity()).isEqualTo(quantity);
-        assertThat(saved.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(saved.getStatus()).isEqualTo(OrderStatus.WAITING_PAYMENT);
 
         // 2. Event diterbitkan dengan data yang benar
         ArgumentCaptor<OrderCreatedEvent> eventCaptor =
