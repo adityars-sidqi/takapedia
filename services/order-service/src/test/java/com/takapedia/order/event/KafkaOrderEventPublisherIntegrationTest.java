@@ -16,6 +16,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -53,7 +54,9 @@ class KafkaOrderEventPublisherIntegrationTest {
         UUID orderId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         Instant occurredAt = Instant.parse("2026-01-01T00:00:00Z");
-        OrderCreatedEvent event = new OrderCreatedEvent(orderId, productId, 3, PaymentMethod.BCA_VA, occurredAt);
+        BigDecimal amount = BigDecimal.valueOf(30_000);
+        OrderCreatedEvent event = new OrderCreatedEvent(
+                orderId, productId, 3, PaymentMethod.BCA_VA, amount, occurredAt);
 
         // when — publish lewat adapter sungguhan
         orderEventPublisher.publish(event);
@@ -76,6 +79,7 @@ class KafkaOrderEventPublisherIntegrationTest {
             assertThat(received.quantity()).isEqualTo(3);
             assertThat(received.occurredAt()).isEqualTo(occurredAt);
             assertThat(received.paymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
+            assertThat(received.amount()).isEqualByComparingTo(amount);
         });
 
         consumer.close();

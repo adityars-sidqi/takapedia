@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +37,7 @@ class OrderServiceTest {
         UUID productId = UUID.randomUUID();
         int quantity = 3;
         PaymentMethod paymentMethod = PaymentMethod.BCA_VA;
+        BigDecimal expectedAmount = BigDecimal.valueOf(30_000);
 
         // repository.save mengembalikan order dengan id ter-generate
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
@@ -54,6 +56,7 @@ class OrderServiceTest {
         assertThat(saved.getQuantity()).isEqualTo(quantity);
         assertThat(saved.getStatus()).isEqualTo(OrderStatus.WAITING_PAYMENT);
         assertThat(saved.getPaymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
+        assertThat(saved.getAmount()).isEqualByComparingTo(expectedAmount);
 
         // 2. Event diterbitkan dengan data yang benar
         ArgumentCaptor<OrderCreatedEvent> eventCaptor =
@@ -64,5 +67,6 @@ class OrderServiceTest {
         assertThat(event.productId()).isEqualTo(productId);
         assertThat(event.quantity()).isEqualTo(quantity);
         assertThat(event.paymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
+        assertThat(event.amount()).isEqualByComparingTo(expectedAmount);
     }
 }
