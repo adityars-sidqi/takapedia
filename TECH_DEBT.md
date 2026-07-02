@@ -6,3 +6,9 @@
 - Proper fix: bikin shared test utility (mungkin TestSecurityConfig common)
 - Services affected: Order Service (confirmed), Auth/Product/Product-Search (unverified)
 - Action: setelah Fase 5a selesai, audit dan fix systematically
+
+## Inventory Service tidak track perubahan kontrak OrderCreatedEvent
+- OrderCreatedEvent struct di Go masih versi lama (belum ada paymentMethod, amount)
+- Aman karena Go JSON ignore unknown fields, dan Inventory tidak butuh field baru
+- Risk: kontrak event jadi implisit, mudah drift
+- Action: pertimbangkan versioning schema (Confluent Schema Registry) atau at minimum, dokumentasi kontrak event terpusat
