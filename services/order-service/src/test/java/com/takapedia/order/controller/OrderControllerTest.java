@@ -60,7 +60,8 @@ class OrderControllerTest {
                         .content(body))
                 .andExpect(status().isAccepted())                    // 202
                 .andExpect(jsonPath("$.orderId").value(orderId.toString()))
-                .andExpect(jsonPath("$.status").value("WAITING_PAYMENT"));
+                .andExpect(jsonPath("$.status").value("WAITING_PAYMENT"))
+                .andExpect(jsonPath("$.amount").value(30000));
     }
 
     @Test
