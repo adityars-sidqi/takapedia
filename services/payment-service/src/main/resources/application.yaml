@@ -23,3 +23,8 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+midtrans:
+  base-url: http://localhost:8091
+  connect-timeout: 3s
+  read-timeout: 5s

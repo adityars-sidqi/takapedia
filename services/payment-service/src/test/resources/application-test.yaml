@@ -9,3 +9,14 @@ spring:
     hibernate:
       ddl-auto: create-drop
     database-platform: org.hibernate.dialect.H2Dialect
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:9999/mock-jwks
+
+midtrans:
+  base-url: http://localhost:9999
+  connect-timeout: 3s
+  read-timeout: 5s
