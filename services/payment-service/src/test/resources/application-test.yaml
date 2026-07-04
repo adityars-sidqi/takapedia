@@ -30,3 +30,5 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 500ms
         permittedNumberOfCallsInHalfOpenState: 2
+        ignoreExceptions:
+          - com.takapedia.payment.exception.MidtransClient4xxException

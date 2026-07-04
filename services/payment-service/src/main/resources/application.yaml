@@ -50,3 +50,5 @@ resilience4j:
         waitDurationInOpenState: 10s
         permittedNumberOfCallsInHalfOpenState: 3
         automaticTransitionFromOpenToHalfOpenEnabled: true
+        ignoreExceptions:
+          - com.takapedia.payment.exception.MidtransClient4xxException

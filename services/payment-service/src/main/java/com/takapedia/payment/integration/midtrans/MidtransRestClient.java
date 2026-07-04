@@ -2,6 +2,7 @@ package com.takapedia.payment.integration.midtrans;
 
 import com.takapedia.payment.exception.MidtransClient4xxException;
 import com.takapedia.payment.exception.MidtransServerException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.*;
@@ -19,6 +20,7 @@ public class MidtransRestClient implements MidtransClient {
     }
 
     @Override
+    @CircuitBreaker(name = "midtrans", fallbackMethod = "chargeFallback")
     public MidtransChargeResponse charge(MidtransChargeRequest request) {
         try {
             return restClient.post()
@@ -51,5 +53,28 @@ public class MidtransRestClient implements MidtransClient {
             throw new MidtransServerException(
                     "Midtrans call failed unexpectedly for orderId=" + request.orderId(), e);
         }
+    }
+
+    /**
+     * Fallback dipanggil untuk SEMUA exception yang bocor dari charge(),
+     * termasuk yang di-ignore Circuit Breaker.
+     *
+     * Perilaku kita:
+     * - MidtransClient4xxException (4xx): re-throw apa adanya. CB tidak menghitungnya
+     *   sebagai failure (via ignoreExceptions), tapi fallback tetap dipanggil.
+     *   Kita mau caller tetap tahu ini 4xx.
+     * - Exception lain (5xx, timeout, CallNotPermittedException saat CB OPEN):
+     *   wrap sebagai MidtransServerException dengan konteks fallback.
+     */
+    public MidtransChargeResponse chargeFallback(MidtransChargeRequest request, Throwable ex) {
+        if (ex instanceof MidtransClient4xxException e) {
+            // 4xx: bukan gateway problem, teruskan ke caller apa adanya
+            throw e;
+        }
+        log.warn("Circuit breaker fallback triggered for orderId={}, cause={}",
+                request.orderId(), ex.getClass().getSimpleName());
+        throw new MidtransServerException(
+                "Midtrans gateway unavailable for orderId=" + request.orderId() +
+                        " (circuit breaker fallback)", ex);
     }
 }
