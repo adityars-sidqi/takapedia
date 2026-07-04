@@ -1,0 +1,17 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/v2/charge"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "externalReference": "VA-BCA-{{randomValue length=8 type='NUMERIC'}}",
+      "status": "PENDING"
+    },
+    "transformers": ["response-template"]
+  }
+}

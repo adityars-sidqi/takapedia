@@ -67,6 +67,17 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
 
+  wiremock:
+    image: wiremock/wiremock:3.9.1
+    container_name: takapedia-wiremock
+    ports:
+      - "8091:8080"
+    command:
+      - "--global-response-templating"
+      - "--verbose"
+    volumes:
+      - ./infra/wiremock/mappings:/home/wiremock/mappings:ro
+
   kafka-connect:
     image: quay.io/debezium/connect:2.7
     container_name: takapedia-kafka-connect
