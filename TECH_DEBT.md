@@ -1,3 +1,10 @@
+# Tech Debt — Takapedia
+
+> Daftar utang teknis yang sengaja ditunda, dengan konteks dan rencana penyelesaian.
+> Dicatat eksplisit agar keputusan penyederhanaan tidak terlupakan.
+
+---
+
 ## Test broken across services after JWKS migration
 - Discovered: 2026-07-02, during Fase 5a Commit A refactor
 - Root cause: application-test.yml override datasource+jpa tapi lupa
@@ -18,3 +25,55 @@
 - Konsekuensi: Order Service tidak tahu payment sudah selesai
 - Solusi proper: Transactional Outbox pattern
 - Ditunda ke fase resilience terpisah
+
+## Payment stuck di INITIATED bila crash antara Transaction 1 dan Midtrans call
+- Skenario: split-transaction — Payment tersimpan INITIATED (T1 commit), lalu proses
+  crash sebelum charge Midtrans selesai. Payment nyangkut di INITIATED selamanya.
+- Konsekuensi: order stuck WAITING_PAYMENT, tidak ada VA, tidak ada notifikasi
+- Solusi proper: scheduled recovery job (scan INITIATED > N menit → retry charge)
+- Ditunda ke Fase 5c (reconciliation)
+
+## Re-publish PaymentCompleted saat AlreadyProcessedException (Opsi B)
+- Sekarang (Opsi A): event duplikat OrderCreated → skip total, tidak re-publish
+- Risk: bila PaymentCompleted pertama hilang di jaringan, Order Service menunggu selamanya
+- Opsi B: query Payment existing → re-publish PaymentCompleted dari state
+- Ditunda; butuh idempotency PaymentCompleted di Order Service juga
+
+## Real pricing (formula dummy)
+- Sekarang: amount = quantity × 10.000 (hardcoded, ada TODO eksplisit di OrderService)
+- Proper: ambil harga dari Product Service saat order dibuat
+- Ditunda sampai Fase 5 selesai
+
+## userId dari JWT di Order Service
+- Sekarang: order belum menyimpan siapa pembuatnya
+- Proper: ekstrak userId dari JWT claim saat POST /orders
+- Ditunda ke sub-fase security
+
+## shippingAddress di Order
+- Sekarang: order belum punya alamat pengiriman
+- Dibutuhkan saat Delivery Service dibangun (Fase 6)
+
+## EXPIRED mapping di Order Service (Fase 5b)
+- PaymentOutcome.EXPIRED perlu dipetakan ke status Order
+- Keputusan (status Order baru EXPIRED vs PAYMENT_FAILED) di-lock saat coding 5b
+- Preferensi: status eksplisit agar data tidak ambigu
+
+## Race condition webhook vs scheduled reconciliation (Fase 5c)
+- Skenario: user bayar di detik terakhir; webhook settlement (PAID) bertabrakan dengan
+  scheduled job yang menandai EXPIRED
+- Solusi: conditional update (UPDATE ... WHERE status='PENDING') atau optimistic locking (@Version)
+- Fondasi conditional update sudah dikenalkan di idempotency webhook Fase 5b
+
+## Centralized config
+- Sekarang: config (mis. midtrans.base-url, server key) tersebar di application.yml per service
+- Kandidat: Spring Cloud Config Server (atau Consul/Vault)
+- Ditunda; kandidat sub-fase antara Fase 5 dan 6
+
+## Elasticsearch tertahan di 8.15.0
+- Upgrade ke ES 9 gagal: Confluent ES Sink Connector 15.1.2 belum kompatibel
+- Tetap di 8.15.0 sampai connector mendukung ES 9
+
+## JWT di Payment Service (Fase 5b)
+- Endpoint GET /payments/{orderId} akan protected (JWT), webhook TIDAK (pakai signature)
+- Ikuti pola JWKS/static public key seperti service lain
+- Terkait juga: rencana migrasi JWT static public key → endpoint JWKS lintas service
