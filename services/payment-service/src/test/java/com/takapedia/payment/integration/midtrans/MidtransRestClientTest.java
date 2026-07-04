@@ -1,7 +1,8 @@
 package com.takapedia.payment.integration.midtrans;
 
 import com.takapedia.payment.entity.PaymentMethod;
-import com.takapedia.payment.exception.MidtransClientException;
+import com.takapedia.payment.exception.MidtransClient4xxException;
+import com.takapedia.payment.exception.MidtransServerException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -58,7 +59,7 @@ class MidtransRestClientTest {
     }
 
     @Test
-    void charge_wrapsHttp5xxErrorAsMidtransClientException() {
+    void charge_wrapsHttp5xxErrorAsMidtransServerException() {
         UUID orderId = UUID.randomUUID();
         MidtransChargeRequest request = new MidtransChargeRequest(
                 orderId, BigDecimal.valueOf(30_000), PaymentMethod.BCA_VA);
@@ -67,12 +68,12 @@ class MidtransRestClientTest {
                 .andRespond(withServerError());
 
         assertThatThrownBy(() -> client.charge(request))
-                .isInstanceOf(MidtransClientException.class)
+                .isInstanceOf(MidtransServerException.class)
                 .hasMessageContaining(orderId.toString());
     }
 
     @Test
-    void charge_wrapsHttp4xxErrorAsMidtransClientException() {
+    void charge_wrapsHttp4xxErrorAsMidtransClient4xxException() {
         UUID orderId = UUID.randomUUID();
         MidtransChargeRequest request = new MidtransChargeRequest(
                 orderId, BigDecimal.valueOf(30_000), PaymentMethod.BCA_VA);
@@ -81,7 +82,7 @@ class MidtransRestClientTest {
                 .andRespond(withBadRequest());
 
         assertThatThrownBy(() -> client.charge(request))
-                .isInstanceOf(MidtransClientException.class)
+                .isInstanceOf(MidtransClient4xxException.class)
                 .hasMessageContaining(orderId.toString());
     }
 }

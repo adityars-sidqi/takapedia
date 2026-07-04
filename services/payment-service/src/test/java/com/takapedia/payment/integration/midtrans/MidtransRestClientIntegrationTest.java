@@ -2,7 +2,7 @@ package com.takapedia.payment.integration.midtrans;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.takapedia.payment.entity.PaymentMethod;
-import com.takapedia.payment.exception.MidtransClientException;
+import com.takapedia.payment.exception.MidtransServerException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,7 +72,7 @@ class MidtransRestClientIntegrationTest {
     }
 
     @Test
-    void charge_throwsMidtransClientException_whenGatewayReturns500() {
+    void charge_throwsMidtransServerException_whenGatewayReturns500() {
         UUID orderId = UUID.randomUUID();
         MidtransChargeRequest request = new MidtransChargeRequest(
                 orderId, BigDecimal.valueOf(30_000), PaymentMethod.BCA_VA);
@@ -81,12 +81,12 @@ class MidtransRestClientIntegrationTest {
                 .willReturn(aResponse().withStatus(500)));
 
         assertThatThrownBy(() -> client.charge(request))
-                .isInstanceOf(MidtransClientException.class)
+                .isInstanceOf(MidtransServerException.class)
                 .hasMessageContaining(orderId.toString());
     }
 
     @Test
-    void charge_throwsMidtransClientException_whenGatewayResponseIsSlow() {
+    void charge_throwsMidtransServerException_whenGatewayResponseIsSlow() {
         UUID orderId = UUID.randomUUID();
         MidtransChargeRequest request = new MidtransChargeRequest(
                 orderId, BigDecimal.valueOf(30_000), PaymentMethod.BCA_VA);
@@ -104,7 +104,7 @@ class MidtransRestClientIntegrationTest {
                                 """)));
 
         assertThatThrownBy(() -> client.charge(request))
-                .isInstanceOf(MidtransClientException.class)
+                .isInstanceOf(MidtransServerException.class)
                 .hasMessageContaining(orderId.toString());
     }
 }
