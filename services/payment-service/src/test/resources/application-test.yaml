@@ -20,3 +20,13 @@ midtrans:
   base-url: http://localhost:9999
   connect-timeout: 3s
   read-timeout: 5s
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      midtrans:
+        slidingWindowSize: 3
+        minimumNumberOfCalls: 2
+        failureRateThreshold: 50
+        waitDurationInOpenState: 500ms
+        permittedNumberOfCallsInHalfOpenState: 2
