@@ -36,6 +36,12 @@ public class Payment {
     @Column(nullable = false)
     private PaymentStatus status;
 
+    @Column(name = "external_reference")
+    private String externalReference;
+
+    @Column(name = "failure_reason")
+    private String failureReason;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

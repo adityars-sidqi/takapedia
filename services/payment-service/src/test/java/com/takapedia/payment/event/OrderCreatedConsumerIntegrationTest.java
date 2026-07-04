@@ -4,6 +4,10 @@ import com.takapedia.payment.entity.Payment;
 import com.takapedia.payment.entity.PaymentMethod;
 import com.takapedia.payment.entity.PaymentStatus;
 import com.takapedia.payment.entity.ProcessedEvent;
+import com.takapedia.payment.integration.midtrans.MidtransChargeRequest;
+import com.takapedia.payment.integration.midtrans.MidtransChargeResponse;
+import com.takapedia.payment.integration.midtrans.MidtransClient;
+import com.takapedia.payment.integration.midtrans.MidtransPaymentStatus;
 import com.takapedia.payment.repository.PaymentRepository;
 import com.takapedia.payment.repository.ProcessedEventRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +19,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -27,11 +32,16 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@EmbeddedKafka(partitions = 1, topics = "order.created")
+@EmbeddedKafka(partitions = 1, topics = {"order.created", "payment.completed"})
 class OrderCreatedConsumerIntegrationTest {
+
+    @MockitoBean
+    private MidtransClient midtransClient;
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -55,6 +65,10 @@ class OrderCreatedConsumerIntegrationTest {
     void cleanDatabase() {
         paymentRepository.deleteAll();
         processedEventRepository.deleteAll();
+
+        // Default: Midtrans return sukses
+        when(midtransClient.charge(any(MidtransChargeRequest.class)))
+                .thenReturn(new MidtransChargeResponse("VA-BCA-TEST", MidtransPaymentStatus.PENDING));
     }
 
     @Test
@@ -76,7 +90,9 @@ class OrderCreatedConsumerIntegrationTest {
             Payment payment = savedPayment.get();
             assertThat(payment.getAmount()).isEqualByComparingTo(BigDecimal.valueOf(30_000));
             assertThat(payment.getPaymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
-            assertThat(payment.getStatus()).isEqualTo(PaymentStatus.INITIATED);
+            assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
+            assertThat(payment.getExternalReference()).isEqualTo("VA-BCA-TEST");    // ← TAMBAH
+            assertThat(payment.getFailureReason()).isNull();
 
             Optional<ProcessedEvent> savedProcessed = processedEventRepository.findById(orderId);
             assertThat(savedProcessed).isPresent();

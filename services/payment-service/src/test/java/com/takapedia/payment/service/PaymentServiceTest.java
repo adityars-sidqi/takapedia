@@ -2,19 +2,23 @@ package com.takapedia.payment.service;
 
 import com.takapedia.payment.entity.Payment;
 import com.takapedia.payment.entity.PaymentMethod;
-import com.takapedia.payment.entity.PaymentStatus;
-import com.takapedia.payment.entity.ProcessedEvent;
 import com.takapedia.payment.event.OrderCreatedEvent;
+import com.takapedia.payment.event.PaymentCompletedEvent;
+import com.takapedia.payment.event.PaymentEventPublisher;
+import com.takapedia.payment.event.PaymentOutcome;
 import com.takapedia.payment.exception.AlreadyProcessedException;
-import com.takapedia.payment.repository.PaymentRepository;
-import com.takapedia.payment.repository.ProcessedEventRepository;
+import com.takapedia.payment.exception.MidtransClient4xxException;
+import com.takapedia.payment.exception.MidtransServerException;
+import com.takapedia.payment.integration.midtrans.MidtransChargeRequest;
+import com.takapedia.payment.integration.midtrans.MidtransChargeResponse;
+import com.takapedia.payment.integration.midtrans.MidtransClient;
+import com.takapedia.payment.integration.midtrans.MidtransPaymentStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -23,68 +27,131 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
 
     @Mock
-    private PaymentRepository paymentRepository;
+    private PaymentPersistenceService paymentPersistenceService;
 
     @Mock
-    private ProcessedEventRepository processedEventRepository;
+    private MidtransClient midtransClient;
+
+    @Mock
+    private PaymentEventPublisher paymentEventPublisher;
 
     @InjectMocks
     private PaymentService paymentService;
 
-    @Test
-    void initializePayment_persistsPaymentAndProcessedEvent_whenEventIsNew() {
-        UUID orderId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        BigDecimal amount = BigDecimal.valueOf(30_000);
-        Instant occurredAt = Instant.parse("2026-07-02T10:00:00Z");
+    private OrderCreatedEvent sampleEvent(UUID orderId) {
+        return new OrderCreatedEvent(
+                orderId,
+                UUID.randomUUID(),
+                3,
+                PaymentMethod.BCA_VA,
+                BigDecimal.valueOf(30_000),
+                Instant.parse("2026-07-04T10:00:00Z")
+        );
+    }
 
-        OrderCreatedEvent event = new OrderCreatedEvent(
-                orderId, productId, 3, PaymentMethod.BCA_VA, amount, occurredAt);
-
-        paymentService.initializePayment(event);
-
-        // 1. ProcessedEvent tersimpan dengan orderId & occurredAt event
-        ArgumentCaptor<ProcessedEvent> processedCaptor =
-                ArgumentCaptor.forClass(ProcessedEvent.class);
-        verify(processedEventRepository).saveAndFlush(processedCaptor.capture());
-        ProcessedEvent savedProcessed = processedCaptor.getValue();
-        assertThat(savedProcessed.getOrderId()).isEqualTo(orderId);
-        assertThat(savedProcessed.getProcessedAt()).isEqualTo(occurredAt);
-
-        // 2. Payment tersimpan dengan status INITIATED dan field dari event
-        ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
-        verify(paymentRepository).save(paymentCaptor.capture());
-        Payment savedPayment = paymentCaptor.getValue();
-        assertThat(savedPayment.getOrderId()).isEqualTo(orderId);
-        assertThat(savedPayment.getAmount()).isEqualByComparingTo(amount);
-        assertThat(savedPayment.getPaymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
-        assertThat(savedPayment.getStatus()).isEqualTo(PaymentStatus.INITIATED);
+    private Payment initiatedPayment(UUID orderId) {
+        Payment payment = new Payment();
+        payment.setId(UUID.randomUUID());
+        payment.setOrderId(orderId);
+        payment.setAmount(BigDecimal.valueOf(30_000));
+        payment.setPaymentMethod(PaymentMethod.BCA_VA);
+        return payment;
     }
 
     @Test
-    void initializePayment_throwsAlreadyProcessed_andSkipsPayment_whenEventIsDuplicate() {
+    void initializePayment_finalizesSuccessAndPublishesSuccessEvent_whenChargeSucceeds() {
         UUID orderId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        Instant occurredAt = Instant.parse("2026-07-02T10:00:00Z");
+        OrderCreatedEvent event = sampleEvent(orderId);
+        Payment initiated = initiatedPayment(orderId);
 
-        OrderCreatedEvent event = new OrderCreatedEvent(
-                orderId, productId, 3, PaymentMethod.BCA_VA, BigDecimal.valueOf(30_000), occurredAt);
+        when(paymentPersistenceService.initializePaymentRecord(event)).thenReturn(initiated);
+        when(midtransClient.charge(any(MidtransChargeRequest.class))).thenReturn(
+                new MidtransChargeResponse("VA-BCA-12345678", MidtransPaymentStatus.PENDING));
 
-        // Simulasikan duplicate key: insert ProcessedEvent gagal karena PK sudah ada
-        doThrow(new DataIntegrityViolationException("duplicate key"))
-                .when(processedEventRepository).saveAndFlush(any(ProcessedEvent.class));
+        paymentService.initializePayment(event);
+
+        verify(paymentPersistenceService).finalizeSuccessfulPayment(orderId, "VA-BCA-12345678");
+        verify(paymentPersistenceService, never()).finalizeFailedPayment(any(), any());
+
+        ArgumentCaptor<PaymentCompletedEvent> eventCaptor =
+                ArgumentCaptor.forClass(PaymentCompletedEvent.class);
+        verify(paymentEventPublisher).publish(eventCaptor.capture());
+        PaymentCompletedEvent published = eventCaptor.getValue();
+        assertThat(published.orderId()).isEqualTo(orderId);
+        assertThat(published.outcome()).isEqualTo(PaymentOutcome.SUCCESS);
+        assertThat(published.externalReference()).isEqualTo("VA-BCA-12345678");
+        assertThat(published.failureReason()).isNull();
+    }
+
+    @Test
+    void initializePayment_finalizesFailedAndPublishesFailedEvent_whenGatewayUnavailable() {
+        UUID orderId = UUID.randomUUID();
+        OrderCreatedEvent event = sampleEvent(orderId);
+        Payment initiated = initiatedPayment(orderId);
+
+        when(paymentPersistenceService.initializePaymentRecord(event)).thenReturn(initiated);
+        when(midtransClient.charge(any(MidtransChargeRequest.class)))
+                .thenThrow(new MidtransServerException("gateway down", new RuntimeException()));
+
+        paymentService.initializePayment(event);
+
+        verify(paymentPersistenceService).finalizeFailedPayment(orderId, FailureReasons.GATEWAY_UNAVAILABLE);
+        verify(paymentPersistenceService, never()).finalizeSuccessfulPayment(any(), any());
+
+        ArgumentCaptor<PaymentCompletedEvent> eventCaptor =
+                ArgumentCaptor.forClass(PaymentCompletedEvent.class);
+        verify(paymentEventPublisher).publish(eventCaptor.capture());
+        PaymentCompletedEvent published = eventCaptor.getValue();
+        assertThat(published.orderId()).isEqualTo(orderId);
+        assertThat(published.outcome()).isEqualTo(PaymentOutcome.FAILED);
+        assertThat(published.externalReference()).isNull();
+        assertThat(published.failureReason()).isEqualTo(FailureReasons.GATEWAY_UNAVAILABLE);
+    }
+
+    @Test
+    void initializePayment_finalizesFailedAndPublishesFailedEvent_whenGatewayRejects() {
+        UUID orderId = UUID.randomUUID();
+        OrderCreatedEvent event = sampleEvent(orderId);
+        Payment initiated = initiatedPayment(orderId);
+
+        when(paymentPersistenceService.initializePaymentRecord(event)).thenReturn(initiated);
+        when(midtransClient.charge(any(MidtransChargeRequest.class)))
+                .thenThrow(new MidtransClient4xxException("bad request", new RuntimeException()));
+
+        paymentService.initializePayment(event);
+
+        verify(paymentPersistenceService).finalizeFailedPayment(orderId, FailureReasons.REJECTED_BY_GATEWAY);
+        verify(paymentPersistenceService, never()).finalizeSuccessfulPayment(any(), any());
+
+        ArgumentCaptor<PaymentCompletedEvent> eventCaptor =
+                ArgumentCaptor.forClass(PaymentCompletedEvent.class);
+        verify(paymentEventPublisher).publish(eventCaptor.capture());
+        PaymentCompletedEvent published = eventCaptor.getValue();
+        assertThat(published.outcome()).isEqualTo(PaymentOutcome.FAILED);
+        assertThat(published.failureReason()).isEqualTo(FailureReasons.REJECTED_BY_GATEWAY);
+    }
+
+    @Test
+    void initializePayment_propagatesAlreadyProcessed_andDoesNotCallMidtransOrPublisher() {
+        UUID orderId = UUID.randomUUID();
+        OrderCreatedEvent event = sampleEvent(orderId);
+
+        when(paymentPersistenceService.initializePaymentRecord(event))
+                .thenThrow(new AlreadyProcessedException(orderId));
 
         assertThatThrownBy(() -> paymentService.initializePayment(event))
-                .isInstanceOf(AlreadyProcessedException.class)
-                .hasMessageContaining(orderId.toString());
+                .isInstanceOf(AlreadyProcessedException.class);
 
-        // Payment TIDAK di-save karena exception terjadi sebelum baris paymentRepository.save
-        verify(paymentRepository, never()).save(any(Payment.class));
+        verify(midtransClient, never()).charge(any());
+        verify(paymentPersistenceService, never()).finalizeSuccessfulPayment(any(), any());
+        verify(paymentPersistenceService, never()).finalizeFailedPayment(any(), any());
+        verify(paymentEventPublisher, never()).publish(any());
     }
 }
