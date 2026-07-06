@@ -90,7 +90,7 @@ class OrderCreatedConsumerIntegrationTest {
             Payment payment = savedPayment.get();
             assertThat(payment.getAmount()).isEqualByComparingTo(BigDecimal.valueOf(30_000));
             assertThat(payment.getPaymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
-            assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
+            assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
             assertThat(payment.getExternalReference()).isEqualTo("VA-BCA-TEST");    // ← TAMBAH
             assertThat(payment.getFailureReason()).isNull();
 

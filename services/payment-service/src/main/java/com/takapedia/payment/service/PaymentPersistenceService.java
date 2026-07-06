@@ -52,7 +52,7 @@ public class PaymentPersistenceService {
     @Transactional
     public Payment finalizeSuccessfulPayment(UUID orderId, String externalReference) {
         Payment payment = findByOrderIdOrThrow(orderId);
-        payment.setStatus(PaymentStatus.SUCCESS);
+        payment.setStatus(PaymentStatus.PENDING);   // ← SUCCESS jadi PENDING (sementara, refactor penuh di #23)
         payment.setExternalReference(externalReference);
         return paymentRepository.save(payment);
     }

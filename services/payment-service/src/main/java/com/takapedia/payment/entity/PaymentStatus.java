@@ -2,6 +2,8 @@ package com.takapedia.payment.entity;
 
 public enum PaymentStatus {
     INITIATED,
-    SUCCESS,
+    PENDING,
+    PAID,
+    EXPIRED,
     FAILED
 }
