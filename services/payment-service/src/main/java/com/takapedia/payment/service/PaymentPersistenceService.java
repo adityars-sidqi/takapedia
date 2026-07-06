@@ -47,12 +47,14 @@ public class PaymentPersistenceService {
     }
 
     /**
-     * Transaction 2 (varian sukses): update Payment status ke SUCCESS + externalReference.
+     * Transaction 2 (varian charge sukses): VA number sudah dibuat Midtrans.
+     * Payment pindah ke PENDING — menunggu user transfer ke VA.
+     * BELUM final; konfirmasi pembayaran datang lewat webhook.
      */
     @Transactional
-    public Payment finalizeSuccessfulPayment(UUID orderId, String externalReference) {
+    public Payment markPending(UUID orderId, String externalReference) {
         Payment payment = findByOrderIdOrThrow(orderId);
-        payment.setStatus(PaymentStatus.PENDING);   // ← SUCCESS jadi PENDING (sementara, refactor penuh di #23)
+        payment.setStatus(PaymentStatus.PENDING);
         payment.setExternalReference(externalReference);
         return paymentRepository.save(payment);
     }

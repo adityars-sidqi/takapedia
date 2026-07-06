@@ -26,49 +26,52 @@ public class PaymentService {
     private final MidtransClient midtransClient;
     private final PaymentEventPublisher paymentEventPublisher;
 
-    /**
-     * Orchestrator method — TIDAK @Transactional.
-     * Split ke 2 transaction (via PaymentPersistenceService) supaya
-     * Midtrans HTTP call tidak menahan koneksi DB.
-     */
     public void initializePayment(OrderCreatedEvent event) {
         // Transaction 1: idempotency + Payment INITIATED
         Payment payment = paymentPersistenceService.initializePaymentRecord(event);
 
-        // Call Midtrans DI LUAR transaction
+        // Call Midtrans DI LUAR transaction untuk bikin VA
         MidtransChargeRequest chargeRequest = new MidtransChargeRequest(
                 event.orderId(), event.amount(), event.paymentMethod());
 
         try {
             MidtransChargeResponse response = midtransClient.charge(chargeRequest);
 
-            // Transaction 2 (sukses)
-            paymentPersistenceService.finalizeSuccessfulPayment(
+            // Charge sukses = VA dibuat. Payment → PENDING, nunggu user bayar.
+            // TIDAK publish PaymentCompleted — order tetap WAITING_PAYMENT.
+            // Konfirmasi pembayaran akan datang lewat webhook Midtrans.
+            paymentPersistenceService.markPending(
                     payment.getOrderId(), response.externalReference());
 
-            publishCompletedEvent(payment.getOrderId(),
-                    PaymentOutcome.SUCCESS, response.externalReference(), null);
-
         } catch (MidtransServerException e) {
+            // Gagal bikin VA (gateway down / circuit open). VA tidak tersedia,
+            // order tidak bisa lanjut → FAILED + kabari Order Service segera.
             log.warn("Midtrans server error for orderId={}, marking payment as FAILED",
                     payment.getOrderId());
-            // Transaction 2 (gagal)
             paymentPersistenceService.finalizeFailedPayment(
                     payment.getOrderId(), FailureReasons.GATEWAY_UNAVAILABLE);
-
-            publishCompletedEvent(payment.getOrderId(),
-                    PaymentOutcome.FAILED, null, FailureReasons.GATEWAY_UNAVAILABLE);
+            publishFailedEvent(payment.getOrderId(), FailureReasons.GATEWAY_UNAVAILABLE);
 
         } catch (MidtransClient4xxException e) {
+            // Request kita ditolak gateway (4xx). Juga gagal bikin VA → FAILED.
             log.warn("Midtrans rejected charge for orderId={}, marking payment as FAILED",
                     payment.getOrderId());
-            // Transaction 2 (gagal)
             paymentPersistenceService.finalizeFailedPayment(
                     payment.getOrderId(), FailureReasons.REJECTED_BY_GATEWAY);
-
-            publishCompletedEvent(payment.getOrderId(),
-                    PaymentOutcome.FAILED, null, FailureReasons.REJECTED_BY_GATEWAY);
+            publishFailedEvent(payment.getOrderId(), FailureReasons.REJECTED_BY_GATEWAY);
         }
+    }
+
+    private void publishFailedEvent(UUID orderId, String failureReason) {
+        PaymentCompletedEvent event = new PaymentCompletedEvent(
+                UUID.randomUUID(),
+                orderId,
+                PaymentOutcome.FAILED,
+                null,
+                failureReason,
+                Instant.now()
+        );
+        paymentEventPublisher.publish(event);
     }
 
     private void publishCompletedEvent(UUID orderId,

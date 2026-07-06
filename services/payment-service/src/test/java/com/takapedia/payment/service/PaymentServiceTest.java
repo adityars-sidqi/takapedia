@@ -66,7 +66,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    void initializePayment_finalizesSuccessAndPublishesSuccessEvent_whenChargeSucceeds() {
+    void initializePayment_marksPendingAndDoesNotPublish_whenChargeSucceeds() {
         UUID orderId = UUID.randomUUID();
         OrderCreatedEvent event = sampleEvent(orderId);
         Payment initiated = initiatedPayment(orderId);
@@ -77,17 +77,12 @@ class PaymentServiceTest {
 
         paymentService.initializePayment(event);
 
-        verify(paymentPersistenceService).finalizeSuccessfulPayment(orderId, "VA-BCA-12345678");
+        // Charge sukses → markPending dipanggil dengan VA number
+        verify(paymentPersistenceService).markPending(orderId, "VA-BCA-12345678");
         verify(paymentPersistenceService, never()).finalizeFailedPayment(any(), any());
 
-        ArgumentCaptor<PaymentCompletedEvent> eventCaptor =
-                ArgumentCaptor.forClass(PaymentCompletedEvent.class);
-        verify(paymentEventPublisher).publish(eventCaptor.capture());
-        PaymentCompletedEvent published = eventCaptor.getValue();
-        assertThat(published.orderId()).isEqualTo(orderId);
-        assertThat(published.outcome()).isEqualTo(PaymentOutcome.SUCCESS);
-        assertThat(published.externalReference()).isEqualTo("VA-BCA-12345678");
-        assertThat(published.failureReason()).isNull();
+        // TIDAK ada publish PaymentCompleted saat charge sukses
+        verify(paymentEventPublisher, never()).publish(any());
     }
 
     @Test
@@ -103,7 +98,7 @@ class PaymentServiceTest {
         paymentService.initializePayment(event);
 
         verify(paymentPersistenceService).finalizeFailedPayment(orderId, FailureReasons.GATEWAY_UNAVAILABLE);
-        verify(paymentPersistenceService, never()).finalizeSuccessfulPayment(any(), any());
+        verify(paymentPersistenceService, never()).markPending(any(), any());
 
         ArgumentCaptor<PaymentCompletedEvent> eventCaptor =
                 ArgumentCaptor.forClass(PaymentCompletedEvent.class);
@@ -128,7 +123,7 @@ class PaymentServiceTest {
         paymentService.initializePayment(event);
 
         verify(paymentPersistenceService).finalizeFailedPayment(orderId, FailureReasons.REJECTED_BY_GATEWAY);
-        verify(paymentPersistenceService, never()).finalizeSuccessfulPayment(any(), any());
+        verify(paymentPersistenceService, never()).markPending(any(), any());
 
         ArgumentCaptor<PaymentCompletedEvent> eventCaptor =
                 ArgumentCaptor.forClass(PaymentCompletedEvent.class);
@@ -150,7 +145,7 @@ class PaymentServiceTest {
                 .isInstanceOf(AlreadyProcessedException.class);
 
         verify(midtransClient, never()).charge(any());
-        verify(paymentPersistenceService, never()).finalizeSuccessfulPayment(any(), any());
+        verify(paymentPersistenceService, never()).markPending(any(), any());
         verify(paymentPersistenceService, never()).finalizeFailedPayment(any(), any());
         verify(paymentEventPublisher, never()).publish(any());
     }
