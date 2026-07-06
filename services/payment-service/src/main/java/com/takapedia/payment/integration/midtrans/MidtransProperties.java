@@ -8,5 +8,6 @@ import java.time.Duration;
 public record MidtransProperties(
         String baseUrl,
         Duration connectTimeout,
-        Duration readTimeout
+        Duration readTimeout,
+        String serverKey
 ) {}

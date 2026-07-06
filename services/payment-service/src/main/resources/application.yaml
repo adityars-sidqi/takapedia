@@ -28,6 +28,7 @@ midtrans:
   base-url: http://localhost:8091
   connect-timeout: 3s
   read-timeout: 5s
+  server-key: SB-Mid-server-DUMMYKEYFORLOCAL0000
 
 management:
   endpoints:

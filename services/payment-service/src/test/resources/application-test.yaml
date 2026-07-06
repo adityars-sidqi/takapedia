@@ -20,6 +20,7 @@ midtrans:
   base-url: http://localhost:9999
   connect-timeout: 3s
   read-timeout: 5s
+  server-key: SB-Mid-server-DUMMYKEYFORLOCAL0000
 
 resilience4j:
   circuitbreaker:
