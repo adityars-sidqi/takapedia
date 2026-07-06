@@ -14,7 +14,7 @@ class MidtransWebhookPayloadDeserializationTest {
             JsonMapper.builder().findAndAddModules().build();
 
     @Test
-    void shouldDeserializeLowercaseSettlementStatus() throws Exception {
+    void shouldDeserializeSettlementAndExposeRawAndEnum() throws Exception {
         UUID orderId = UUID.fromString("01234567-89ab-cdef-0123-456789abcdef");
         String json = """
                 {
@@ -28,12 +28,13 @@ class MidtransWebhookPayloadDeserializationTest {
                 objectMapper.readValue(json, MidtransWebhookPayload.class);
 
         assertThat(payload.orderId()).isEqualTo(orderId);
-        assertThat(payload.transactionStatus()).isEqualTo(MidtransTransactionStatus.SETTLEMENT);
+        assertThat(payload.transactionStatus()).isEqualTo("settlement");  // raw
+        assertThat(payload.status()).isEqualTo(MidtransTransactionStatus.SETTLEMENT);  // enum
         assertThat(payload.signatureKey()).isEqualTo("abc123");
     }
 
     @Test
-    void shouldDeserializeExpireStatus() throws Exception {
+    void shouldExposeExpireEnum() throws Exception {
         String json = """
                 {
                   "orderId": "01234567-89ab-cdef-0123-456789abcdef",
@@ -45,11 +46,12 @@ class MidtransWebhookPayloadDeserializationTest {
         MidtransWebhookPayload payload =
                 objectMapper.readValue(json, MidtransWebhookPayload.class);
 
-        assertThat(payload.transactionStatus()).isEqualTo(MidtransTransactionStatus.EXPIRE);
+        assertThat(payload.transactionStatus()).isEqualTo("expire");
+        assertThat(payload.status()).isEqualTo(MidtransTransactionStatus.EXPIRE);
     }
 
     @Test
-    void shouldMapUnknownStatusToUnknown() throws Exception {
+    void shouldMapUnknownRawStatusToUnknownEnum() throws Exception {
         String json = """
                 {
                   "orderId": "01234567-89ab-cdef-0123-456789abcdef",
@@ -61,6 +63,7 @@ class MidtransWebhookPayloadDeserializationTest {
         MidtransWebhookPayload payload =
                 objectMapper.readValue(json, MidtransWebhookPayload.class);
 
-        assertThat(payload.transactionStatus()).isEqualTo(MidtransTransactionStatus.UNKNOWN);
+        assertThat(payload.transactionStatus()).isEqualTo("refund");
+        assertThat(payload.status()).isEqualTo(MidtransTransactionStatus.UNKNOWN);
     }
 }
