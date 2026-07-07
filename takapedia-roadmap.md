@@ -128,7 +128,7 @@ Target: sistem tahan banting. Belajar dari kegagalan yang kamu buat sendiri.
 
 Target: lengkapi service tersisa + lapisan observasi.
 
-- [ ] Bangun **Notification Service** (kirim email invoice; kandidat bagus untuk **Go**)
+- [x] Bangun **Notification Service** (Go): consume `payment.completed` → notifikasi/invoice per outcome, idempotent
 - [x] Bangun **Delivery Service** (consume `OrderPaid` → buat Shipment PENDING, idempotent)
 - [ ] **Log Management** terpusat (ELK stack)
 - [ ] Distributed tracing
