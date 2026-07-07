@@ -53,10 +53,12 @@
 - Sekarang: order belum punya alamat pengiriman
 - Dibutuhkan saat Delivery Service dibangun (Fase 6)
 
-## EXPIRED mapping di Order Service (Fase 5b)
-- PaymentOutcome.EXPIRED perlu dipetakan ke status Order
-- Keputusan (status Order baru EXPIRED vs PAYMENT_FAILED) di-lock saat coding 5b
-- Preferensi: status eksplisit agar data tidak ambigu
+## ✅ EXPIRED mapping di Order Service (Fase 5b) — SELESAI 2026-07-07
+- Keputusan di-lock: OrderStatus.EXPIRED eksplisit (bukan digabung ke PAYMENT_FAILED),
+  agar data tidak ambigu untuk reconciliation Fase 5c
+- PaymentOutcome (Order) + OrderStatus kini punya nilai EXPIRED
+- OrderPaymentUpdateService: switch exhaustive — SUCCESS→PAID, EXPIRED→EXPIRED, FAILED→PAYMENT_FAILED
+- Test: OrderPaymentUpdateServiceTest.applyPaymentOutcome_transitionsToExpired_...
 
 ## Race condition webhook vs scheduled reconciliation (Fase 5c)
 - Skenario: user bayar di detik terakhir; webhook settlement (PAID) bertabrakan dengan
@@ -77,3 +79,15 @@
 - Endpoint GET /payments/{orderId} akan protected (JWT), webhook TIDAK (pakai signature)
 - Ikuti pola JWKS/static public key seperti service lain
 - Terkait juga: rencana migrasi JWT static public key → endpoint JWKS lintas service
+
+## Authorization granular di GET /payments/{orderId} (Fase 5b)
+- Sekarang (Opsi A): endpoint cukup "authenticated" — user login manapun bisa
+  melihat payment milik siapa pun (termasuk order user lain)
+- Risk: kebocoran data lintas user (user A lihat VA/status order user B)
+- Opsi B (proper): user hanya boleh melihat payment untuk order miliknya sendiri
+- Blocker: Payment Service belum menyimpan userId. Butuh:
+  1. userId masuk ke OrderCreated event (dari JWT claim saat POST /orders)
+  2. Payment entity simpan userId
+  3. Endpoint cek userId dari JWT == userId Payment
+- Terkait tech debt "userId dari JWT di Order Service"
+- Ditunda; kandidat sub-fase security setelah Fase 5b

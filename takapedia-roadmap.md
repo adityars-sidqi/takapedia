@@ -112,8 +112,8 @@ Target: sistem tahan banting. Belajar dari kegagalan yang kamu buat sendiri.
 - [ ] Charge sukses → status `PENDING` + simpan nomor VA (belum publish `PaymentCompleted`)
 - [ ] Endpoint webhook `POST /webhooks/midtrans` + verifikasi **signature SHA512**
 - [ ] Idempotency webhook via state Payment (hanya proses saat `PENDING`)
-- [ ] Endpoint polling `GET /payments/{orderId}` (nomor VA) + JWT
-- [ ] Expiry via webhook `expire` → `PaymentCompleted(EXPIRED)`
+- [x] Endpoint polling `GET /payments/{orderId}` (nomor VA) + JWT
+- [x] Expiry via webhook `expire` → `PaymentCompleted(EXPIRED)` (Order map ke `OrderStatus.EXPIRED`)
 
 ### Fase 5c — Reconciliation & Saga (belum) ⬜
 
