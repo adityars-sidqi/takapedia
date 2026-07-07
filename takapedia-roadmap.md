@@ -119,7 +119,7 @@ Target: sistem tahan banting. Belajar dari kegagalan yang kamu buat sendiri.
 
 - [x] Scheduled job: scan Payment `PENDING` melewati batas → tandai kadaluarsa
 - [x] Penanganan **race condition** (conditional update) webhook vs job
-- [ ] Saga: refactor Inventory jadi *reserve → commit* (potong stok saat `PaymentCompleted(SUCCESS)`, bukan saat `OrderCreated`)
+- [x] Saga: Inventory potong stok saat `OrderCreated` (VA dibuat), kembalikan saat `PaymentCompleted(FAILED/EXPIRED)` — compensating transaction (deduct-on-order)
 - [ ] Caching dengan **Redis**
 
 ---
@@ -170,5 +170,5 @@ Pakai Spring Boot dulu untuk Fase 1–4 supaya fokus ke konsep arsitektur, bukan
 - [x] Webhook + signature verification — Fase 5b (dirancang)
 - [x] Split-transaction (network call di luar `@Transactional`) — Fase 5a
 - [ ] Transactional Outbox — Fase 6
-- [ ] Saga (reserve→commit) — Fase 5c
+- [x] Saga (deduct-on-order + compensate-on-failure) — Fase 5c
 - [x] Reconciliation job + race condition handling — Fase 5c

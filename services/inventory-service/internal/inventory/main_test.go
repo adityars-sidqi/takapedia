@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to connect gorm: %v", err)
 	}
 
-	if err := testDB.AutoMigrate(&Inventory{}, &ProcessedEvent{}); err != nil {
+	if err := testDB.AutoMigrate(&Inventory{}, &Reservation{}); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}
 
@@ -61,7 +61,7 @@ func TestMain(m *testing.M) {
 
 func cleanTables(t *testing.T) {
 	t.Helper()
-	if err := testDB.Exec("TRUNCATE inventories, processed_events").Error; err != nil {
+	if err := testDB.Exec("TRUNCATE inventories, reservations").Error; err != nil {
 		t.Fatalf("failed to clean tables: %v", err)
 	}
 }

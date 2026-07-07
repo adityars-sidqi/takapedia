@@ -94,3 +94,14 @@
   3. Endpoint cek userId dari JWT == userId Payment
 - Terkait tech debt "userId dari JWT di Order Service"
 - Ditunda; kandidat sub-fase security setelah Fase 5b
+
+
+## Reserve gagal (stok kurang) tidak dikompensasi ke Order (Fase 5c)
+- Flow saga dipilih: Inventory potong stok saat OrderCreated (bukan saat bayar sukses),
+  lalu kembalikan saat PaymentCompleted(FAILED/EXPIRED). Alasan: sesuai keputusan produk.
+- Gap: kalau stok kurang saat reserve (ErrInsufficientStock), Inventory hanya log — TIDAK
+  ada event kompensasi ke Order. Order tetap lanjut minta VA & bisa PAID walau stok tak ada.
+- Proper: publish event (mis. StockReservationFailed) → Order set PAYMENT_FAILED/CANCELLED +
+  Payment batalkan VA. Ditunda; butuh event baru + consumer di Order Service.
+- Terkait: idempotency Inventory kini via Reservation.status (DEDUCTED→CONFIRMED/RETURNED),
+  menggantikan processed_events.

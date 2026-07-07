@@ -8,15 +8,21 @@ import (
 
 	"github.com/adityars-sidqi/takapedia/services/inventory-service/internal/event"
 	"github.com/adityars-sidqi/takapedia/services/inventory-service/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
 
+// MessageHandler memproses satu payload pesan. Kasus normal (idempotent skip,
+// JSON malformed) ditangani & di-log di dalam handler; loop tak boleh macet.
+type MessageHandler func(value []byte)
+
 type Consumer struct {
-	reader  *kafka.Reader
-	service *inventory.Service
+	reader *kafka.Reader
+	handle MessageHandler
+	name   string
 }
 
-func NewConsumer(brokers []string, topic, groupID string, service *inventory.Service) *Consumer {
+func NewConsumer(brokers []string, topic, groupID, name string, handle MessageHandler) *Consumer {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     brokers,
 		Topic:       topic,
@@ -25,45 +31,76 @@ func NewConsumer(brokers []string, topic, groupID string, service *inventory.Ser
 		MinBytes:    1,
 		MaxBytes:    10e6,
 	})
-	return &Consumer{reader: reader, service: service}
+	return &Consumer{reader: reader, handle: handle, name: name}
 }
 
 // Run menjalankan poll loop sampai context dibatalkan.
 func (c *Consumer) Run(ctx context.Context) error {
-	log.Println("inventory consumer started, waiting for messages...")
+	log.Printf("[%s] consumer started, waiting for messages...", c.name)
 	for {
-		// ReadMessage blocking sampai ada pesan atau context dibatalkan.
-		// kafka-go otomatis meng-commit offset setelah ReadMessage (auto-commit).
 		msg, err := c.reader.ReadMessage(ctx)
 		if err != nil {
-			// Context dibatalkan = shutdown normal.
 			if errors.Is(err, context.Canceled) {
-				log.Println("consumer shutting down...")
+				log.Printf("[%s] consumer shutting down...", c.name)
 				return c.reader.Close()
 			}
-			log.Printf("error reading message: %v", err)
+			log.Printf("[%s] error reading message: %v", c.name, err)
 			continue
 		}
+		c.handle(msg.Value)
+	}
+}
 
+// OrderCreatedHandler: order.created → reserve (potong stok saat order dibuat).
+func OrderCreatedHandler(svc *inventory.Service) MessageHandler {
+	return func(value []byte) {
 		var evt event.OrderCreatedEvent
-		if err := json.Unmarshal(msg.Value, &evt); err != nil {
-			// JSON rusak / tak sesuai kontrak. Log dan lanjut — jangan macetkan loop.
-			log.Printf("failed to decode event, skipping: %v (raw: %s)", err, string(msg.Value))
-			continue
+		if err := json.Unmarshal(value, &evt); err != nil {
+			log.Printf("order.created: gagal decode, skip: %v (raw: %s)", err, string(value))
+			return
 		}
-
-		// Proses: kurangi stok, idempoten.
-		err = c.service.ReduceStock(evt.OrderID, evt.ProductID, evt.Quantity)
+		err := svc.Reserve(evt.OrderID, evt.ProductID, evt.Quantity)
 		switch {
 		case errors.Is(err, inventory.ErrAlreadyProcessed):
-			log.Printf("order %s already processed, skipping", evt.OrderID)
+			log.Printf("order %s sudah di-reserve, skip", evt.OrderID)
 		case err != nil:
-			log.Printf("failed to process order %s: %v", evt.OrderID, err)
-			// Catatan: untuk sekarang kita log & lanjut. Penanganan retry/DLQ
-			// adalah lapisan berikutnya yang sengaja ditunda.
+			log.Printf("gagal reserve order %s: %v", evt.OrderID, err)
 		default:
-			log.Printf("order %s processed: product %s reduced by %d",
+			log.Printf("order %s reserved: stok produk %s dikurangi %d",
 				evt.OrderID, evt.ProductID, evt.Quantity)
 		}
+	}
+}
+
+// PaymentCompletedHandler: payment.completed → confirm (SUCCESS) atau return (FAILED/EXPIRED).
+func PaymentCompletedHandler(svc *inventory.Service) MessageHandler {
+	return func(value []byte) {
+		var evt event.PaymentCompletedEvent
+		if err := json.Unmarshal(value, &evt); err != nil {
+			log.Printf("payment.completed: gagal decode, skip: %v (raw: %s)", err, string(value))
+			return
+		}
+		switch evt.Outcome {
+		case event.OutcomeSuccess:
+			logResult("confirm", evt.OrderID, svc.Confirm(evt.OrderID))
+		case event.OutcomeFailed, event.OutcomeExpired:
+			logResult("return", evt.OrderID, svc.Return(evt.OrderID))
+		default:
+			log.Printf("payment.completed: outcome tak dikenal %q untuk order %s, skip",
+				evt.Outcome, evt.OrderID)
+		}
+	}
+}
+
+func logResult(action string, orderID uuid.UUID, err error) {
+	switch {
+	case errors.Is(err, inventory.ErrAlreadyProcessed):
+		log.Printf("order %s sudah final (%s), skip", orderID, action)
+	case errors.Is(err, inventory.ErrReservationNotFound):
+		log.Printf("order %s: tak ada reservasi untuk %s (payment mendahului reserve?)", orderID, action)
+	case err != nil:
+		log.Printf("gagal %s order %s: %v", action, orderID, err)
+	default:
+		log.Printf("order %s %s ok", orderID, action)
 	}
 }

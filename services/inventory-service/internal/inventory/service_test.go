@@ -25,17 +25,27 @@ func getQuantity(t *testing.T, productID uuid.UUID) int {
 	return inv.Quantity
 }
 
-// countProcessedEvents menghitung baris di processed_events.
-func countProcessedEvents(t *testing.T) int64 {
+// getReservationStatus membaca status reservasi sebuah order.
+func getReservationStatus(t *testing.T, orderID uuid.UUID) string {
+	t.Helper()
+	var res Reservation
+	if err := testDB.First(&res, "order_id = ?", orderID).Error; err != nil {
+		t.Fatalf("failed to read reservation: %v", err)
+	}
+	return res.Status
+}
+
+// countReservations menghitung baris di reservations.
+func countReservations(t *testing.T) int64 {
 	t.Helper()
 	var count int64
-	if err := testDB.Model(&ProcessedEvent{}).Count(&count).Error; err != nil {
-		t.Fatalf("failed to count processed events: %v", err)
+	if err := testDB.Model(&Reservation{}).Count(&count).Error; err != nil {
+		t.Fatalf("failed to count reservations: %v", err)
 	}
 	return count
 }
 
-func TestReduceStock_HappyPath(t *testing.T) {
+func TestReserve_HappyPath(t *testing.T) {
 	cleanTables(t)
 	service := NewService(testDB)
 
@@ -43,22 +53,22 @@ func TestReduceStock_HappyPath(t *testing.T) {
 	orderID := uuid.New()
 	seedInventory(t, productID, 100)
 
-	err := service.ReduceStock(orderID, productID, 3)
-
-	if err != nil {
+	if err := service.Reserve(orderID, productID, 3); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	if got := getQuantity(t, productID); got != 97 {
 		t.Errorf("expected quantity 97, got %d", got)
 	}
-	if got := countProcessedEvents(t); got != 1 {
-		t.Errorf("expected 1 processed event, got %d", got)
+	if got := getReservationStatus(t, orderID); got != StatusDeducted {
+		t.Errorf("expected status DEDUCTED, got %s", got)
+	}
+	if got := countReservations(t); got != 1 {
+		t.Errorf("expected 1 reservation, got %d", got)
 	}
 }
 
-// Ini test paling penting: idempotency. Event sama diproses dua kali,
-// stok hanya berkurang sekali.
-func TestReduceStock_Idempotent(t *testing.T) {
+// Idempotency: order.created yang sama diproses dua kali, stok hanya berkurang sekali.
+func TestReserve_Idempotent(t *testing.T) {
 	cleanTables(t)
 	service := NewService(testDB)
 
@@ -66,37 +76,167 @@ func TestReduceStock_Idempotent(t *testing.T) {
 	orderID := uuid.New()
 	seedInventory(t, productID, 100)
 
-	// Proses pertama — sukses.
-	if err := service.ReduceStock(orderID, productID, 3); err != nil {
+	if err := service.Reserve(orderID, productID, 3); err != nil {
 		t.Fatalf("first call: expected no error, got: %v", err)
 	}
 
-	// Proses kedua dengan orderID SAMA — harus ditolak sebagai duplikat.
-	err := service.ReduceStock(orderID, productID, 3)
-
+	err := service.Reserve(orderID, productID, 3)
 	if err != ErrAlreadyProcessed {
 		t.Errorf("second call: expected ErrAlreadyProcessed, got: %v", err)
 	}
-	// Stok harus TETAP 97, bukan 94 — inilah bukti idempotency.
 	if got := getQuantity(t, productID); got != 97 {
 		t.Errorf("expected quantity to stay 97 after duplicate, got %d", got)
 	}
-	// processed_events tetap 1 baris.
-	if got := countProcessedEvents(t); got != 1 {
-		t.Errorf("expected 1 processed event after duplicate, got %d", got)
+	if got := countReservations(t); got != 1 {
+		t.Errorf("expected 1 reservation after duplicate, got %d", got)
 	}
 }
 
-func TestReduceStock_ProductNotFound(t *testing.T) {
+// Stok kurang → error, dan tidak ada efek samping (reservasi ikut rollback, stok tetap).
+func TestReserve_InsufficientStock(t *testing.T) {
 	cleanTables(t)
 	service := NewService(testDB)
 
+	productID := uuid.New()
 	orderID := uuid.New()
-	unknownProduct := uuid.New() // tidak di-seed
+	seedInventory(t, productID, 2)
 
-	err := service.ReduceStock(orderID, unknownProduct, 3)
+	err := service.Reserve(orderID, productID, 3)
+	if err != ErrInsufficientStock {
+		t.Errorf("expected ErrInsufficientStock, got: %v", err)
+	}
+	if got := getQuantity(t, productID); got != 2 {
+		t.Errorf("expected quantity to stay 2, got %d", got)
+	}
+	if got := countReservations(t); got != 0 {
+		t.Errorf("expected no reservation recorded, got %d", got)
+	}
+}
 
-	if err == nil {
-		t.Error("expected error for unknown product, got nil")
+func TestReserve_ProductNotFound(t *testing.T) {
+	cleanTables(t)
+	service := NewService(testDB)
+
+	err := service.Reserve(uuid.New(), uuid.New(), 3) // produk tak di-seed
+	if err != ErrInsufficientStock {
+		t.Errorf("expected ErrInsufficientStock for unknown product, got: %v", err)
+	}
+}
+
+// Pembayaran sukses: reservasi jadi CONFIRMED, stok TIDAK berubah (sudah dipotong saat reserve).
+func TestConfirm_HappyPath(t *testing.T) {
+	cleanTables(t)
+	service := NewService(testDB)
+
+	productID := uuid.New()
+	orderID := uuid.New()
+	seedInventory(t, productID, 100)
+	mustReserve(t, service, orderID, productID, 3)
+
+	if err := service.Confirm(orderID); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if got := getReservationStatus(t, orderID); got != StatusConfirmed {
+		t.Errorf("expected status CONFIRMED, got %s", got)
+	}
+	if got := getQuantity(t, productID); got != 97 {
+		t.Errorf("expected quantity to stay 97 after confirm, got %d", got)
+	}
+}
+
+func TestConfirm_Idempotent(t *testing.T) {
+	cleanTables(t)
+	service := NewService(testDB)
+
+	productID := uuid.New()
+	orderID := uuid.New()
+	seedInventory(t, productID, 100)
+	mustReserve(t, service, orderID, productID, 3)
+
+	if err := service.Confirm(orderID); err != nil {
+		t.Fatalf("first confirm: expected no error, got: %v", err)
+	}
+	if err := service.Confirm(orderID); err != ErrAlreadyProcessed {
+		t.Errorf("second confirm: expected ErrAlreadyProcessed, got: %v", err)
+	}
+}
+
+// Pembayaran gagal/expired: stok dikembalikan (kompensasi), reservasi jadi RETURNED.
+func TestReturn_RestoresStock(t *testing.T) {
+	cleanTables(t)
+	service := NewService(testDB)
+
+	productID := uuid.New()
+	orderID := uuid.New()
+	seedInventory(t, productID, 100)
+	mustReserve(t, service, orderID, productID, 3) // stok → 97
+
+	if err := service.Return(orderID); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if got := getQuantity(t, productID); got != 100 {
+		t.Errorf("expected quantity restored to 100, got %d", got)
+	}
+	if got := getReservationStatus(t, orderID); got != StatusReturned {
+		t.Errorf("expected status RETURNED, got %s", got)
+	}
+}
+
+// Return dua kali tidak boleh menambah stok dua kali.
+func TestReturn_Idempotent(t *testing.T) {
+	cleanTables(t)
+	service := NewService(testDB)
+
+	productID := uuid.New()
+	orderID := uuid.New()
+	seedInventory(t, productID, 100)
+	mustReserve(t, service, orderID, productID, 3)
+
+	if err := service.Return(orderID); err != nil {
+		t.Fatalf("first return: expected no error, got: %v", err)
+	}
+	if err := service.Return(orderID); err != ErrAlreadyProcessed {
+		t.Errorf("second return: expected ErrAlreadyProcessed, got: %v", err)
+	}
+	if got := getQuantity(t, productID); got != 100 {
+		t.Errorf("expected quantity to stay 100 (no double restore), got %d", got)
+	}
+}
+
+func TestReturn_ReservationNotFound(t *testing.T) {
+	cleanTables(t)
+	service := NewService(testDB)
+
+	if err := service.Return(uuid.New()); err != ErrReservationNotFound {
+		t.Errorf("expected ErrReservationNotFound, got: %v", err)
+	}
+}
+
+// Defense-in-depth: setelah CONFIRMED (bayar sukses), Return terlambat TIDAK boleh
+// mengembalikan stok — guard status menutup celah ini.
+func TestReturn_AfterConfirm_DoesNotRestore(t *testing.T) {
+	cleanTables(t)
+	service := NewService(testDB)
+
+	productID := uuid.New()
+	orderID := uuid.New()
+	seedInventory(t, productID, 100)
+	mustReserve(t, service, orderID, productID, 3)
+
+	if err := service.Confirm(orderID); err != nil {
+		t.Fatalf("confirm: expected no error, got: %v", err)
+	}
+	if err := service.Return(orderID); err != ErrAlreadyProcessed {
+		t.Errorf("late return: expected ErrAlreadyProcessed, got: %v", err)
+	}
+	if got := getQuantity(t, productID); got != 97 {
+		t.Errorf("expected quantity to stay 97 (no restore after confirm), got %d", got)
+	}
+}
+
+func mustReserve(t *testing.T, service *Service, orderID, productID uuid.UUID, qty int) {
+	t.Helper()
+	if err := service.Reserve(orderID, productID, qty); err != nil {
+		t.Fatalf("setup reserve failed: %v", err)
 	}
 }
