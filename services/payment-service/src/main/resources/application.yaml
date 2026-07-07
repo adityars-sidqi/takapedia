@@ -1,6 +1,12 @@
 spring:
   application:
     name: payment-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Auth Service menerbitkan JWKS (sama seperti Order Service)
+          jwk-set-uri: http://localhost:8081/.well-known/jwks.json
 
   datasource:
     url: jdbc:postgresql://localhost:5432/payment_db
