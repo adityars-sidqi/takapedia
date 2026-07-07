@@ -30,6 +30,15 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
+payment:
+  # Umur VA yang kita dikte ke Midtrans (custom_expiry). expiry_time di response yang disimpan.
+  va-expiry: 15m
+  reconciliation:
+    # Cadence job pemindai (milidetik) — dibaca oleh @Scheduled fixedDelayString.
+    scan-rate: 60000
+    # Buffer sebelum job berani men-EXPIRED (job = jaring pengaman, webhook = sinyal utama).
+    grace: 5m
+
 midtrans:
   base-url: http://localhost:8091
   connect-timeout: 3s

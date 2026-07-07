@@ -60,11 +60,14 @@
 - OrderPaymentUpdateService: switch exhaustive — SUCCESS→PAID, EXPIRED→EXPIRED, FAILED→PAYMENT_FAILED
 - Test: OrderPaymentUpdateServiceTest.applyPaymentOutcome_transitionsToExpired_...
 
-## Race condition webhook vs scheduled reconciliation (Fase 5c)
+## ✅ Race condition webhook vs scheduled reconciliation (Fase 5c) — DITANGANI 2026-07-07
 - Skenario: user bayar di detik terakhir; webhook settlement (PAID) bertabrakan dengan
   scheduled job yang menandai EXPIRED
-- Solusi: conditional update (UPDATE ... WHERE status='PENDING') atau optimistic locking (@Version)
-- Fondasi conditional update sudah dikenalkan di idempotency webhook Fase 5b
+- Solusi terpasang: reconciliation job memakai conditional update atomik
+  (expireIfStillPending → updateStatusIfCurrentMatches WHERE status=PENDING).
+  Kalau webhook menang balapan, update kembalikan 0 → job skip, TIDAK publish EXPIRED.
+- Optimistic locking (@Version) belum diperlukan untuk transisi tunggal ini.
+- Catatan: tech debt "Payment stuck di INITIATED" (butuh retry-charge) masih terpisah & terbuka.
 
 ## Centralized config
 - Sekarang: config (mis. midtrans.base-url, server key) tersebar di application.yml per service

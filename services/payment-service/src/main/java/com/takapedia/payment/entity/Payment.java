@@ -42,6 +42,13 @@ public class Payment {
     @Column(name = "failure_reason")
     private String failureReason;
 
+    /**
+     * Batas waktu VA. Di-set saat markPending (charge sukses) = now + payment.va-expiry.
+     * Reconciliation job memakai ini untuk mendeteksi PENDING yang kedaluwarsa.
+     */
+    @Column(name = "expires_at")
+    private Instant expiresAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

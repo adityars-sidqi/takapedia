@@ -12,6 +12,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -52,11 +53,25 @@ public class PaymentPersistenceService {
      * BELUM final; konfirmasi pembayaran datang lewat webhook.
      */
     @Transactional
-    public Payment markPending(UUID orderId, String externalReference) {
+    public Payment markPending(UUID orderId, String externalReference, Instant expiresAt) {
         Payment payment = findByOrderIdOrThrow(orderId);
         payment.setStatus(PaymentStatus.PENDING);
         payment.setExternalReference(externalReference);
+        // expiresAt berasal dari response Midtrans (source of truth), bukan dihitung lokal.
+        payment.setExpiresAt(expiresAt);
         return paymentRepository.save(payment);
+    }
+
+    /**
+     * Reconciliation: tandai EXPIRED HANYA jika Payment masih PENDING (conditional update atomik).
+     * Return true kalau transisi terjadi; false kalau sudah bukan PENDING (mis. webhook settlement
+     * menang balapan) — pemanggil memakai ini untuk memutuskan publish PaymentCompleted(EXPIRED).
+     */
+    @Transactional
+    public boolean expireIfStillPending(UUID orderId) {
+        int updated = paymentRepository.updateStatusIfCurrentMatches(
+                orderId, PaymentStatus.PENDING, PaymentStatus.EXPIRED, FailureReasons.VA_EXPIRED);
+        return updated == 1;
     }
 
     /**

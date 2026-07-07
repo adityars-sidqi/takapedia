@@ -1,5 +1,6 @@
 package com.takapedia.payment.service;
 
+import com.takapedia.payment.config.PaymentProperties;
 import com.takapedia.payment.entity.Payment;
 import com.takapedia.payment.entity.PaymentMethod;
 import com.takapedia.payment.event.OrderCreatedEvent;
@@ -21,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -41,6 +43,9 @@ class PaymentServiceTest {
 
     @Mock
     private PaymentEventPublisher paymentEventPublisher;
+
+    @Mock
+    private PaymentProperties paymentProperties;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -71,14 +76,16 @@ class PaymentServiceTest {
         OrderCreatedEvent event = sampleEvent(orderId);
         Payment initiated = initiatedPayment(orderId);
 
+        Instant expiry = Instant.parse("2026-07-04T10:15:00Z");
+        when(paymentProperties.vaExpiry()).thenReturn(Duration.ofMinutes(15));
         when(paymentPersistenceService.initializePaymentRecord(event)).thenReturn(initiated);
         when(midtransClient.charge(any(MidtransChargeRequest.class))).thenReturn(
-                new MidtransChargeResponse("VA-BCA-12345678", MidtransPaymentStatus.PENDING));
+                new MidtransChargeResponse("VA-BCA-12345678", MidtransPaymentStatus.PENDING, expiry));
 
         paymentService.initializePayment(event);
 
-        // Charge sukses → markPending dipanggil dengan VA number
-        verify(paymentPersistenceService).markPending(orderId, "VA-BCA-12345678");
+        // Charge sukses → markPending dipanggil dengan VA number + expiry dari Midtrans (source of truth)
+        verify(paymentPersistenceService).markPending(orderId, "VA-BCA-12345678", expiry);
         verify(paymentPersistenceService, never()).finalizeFailedPayment(any(), any());
 
         // TIDAK ada publish PaymentCompleted saat charge sukses
@@ -91,6 +98,7 @@ class PaymentServiceTest {
         OrderCreatedEvent event = sampleEvent(orderId);
         Payment initiated = initiatedPayment(orderId);
 
+        when(paymentProperties.vaExpiry()).thenReturn(Duration.ofMinutes(15));
         when(paymentPersistenceService.initializePaymentRecord(event)).thenReturn(initiated);
         when(midtransClient.charge(any(MidtransChargeRequest.class)))
                 .thenThrow(new MidtransServerException("gateway down", new RuntimeException()));
@@ -98,7 +106,7 @@ class PaymentServiceTest {
         paymentService.initializePayment(event);
 
         verify(paymentPersistenceService).finalizeFailedPayment(orderId, FailureReasons.GATEWAY_UNAVAILABLE);
-        verify(paymentPersistenceService, never()).markPending(any(), any());
+        verify(paymentPersistenceService, never()).markPending(any(), any(), any());
 
         ArgumentCaptor<PaymentCompletedEvent> eventCaptor =
                 ArgumentCaptor.forClass(PaymentCompletedEvent.class);
@@ -116,6 +124,7 @@ class PaymentServiceTest {
         OrderCreatedEvent event = sampleEvent(orderId);
         Payment initiated = initiatedPayment(orderId);
 
+        when(paymentProperties.vaExpiry()).thenReturn(Duration.ofMinutes(15));
         when(paymentPersistenceService.initializePaymentRecord(event)).thenReturn(initiated);
         when(midtransClient.charge(any(MidtransChargeRequest.class)))
                 .thenThrow(new MidtransClient4xxException("bad request", new RuntimeException()));
@@ -123,7 +132,7 @@ class PaymentServiceTest {
         paymentService.initializePayment(event);
 
         verify(paymentPersistenceService).finalizeFailedPayment(orderId, FailureReasons.REJECTED_BY_GATEWAY);
-        verify(paymentPersistenceService, never()).markPending(any(), any());
+        verify(paymentPersistenceService, never()).markPending(any(), any(), any());
 
         ArgumentCaptor<PaymentCompletedEvent> eventCaptor =
                 ArgumentCaptor.forClass(PaymentCompletedEvent.class);
@@ -145,7 +154,7 @@ class PaymentServiceTest {
                 .isInstanceOf(AlreadyProcessedException.class);
 
         verify(midtransClient, never()).charge(any());
-        verify(paymentPersistenceService, never()).markPending(any(), any());
+        verify(paymentPersistenceService, never()).markPending(any(), any(), any());
         verify(paymentPersistenceService, never()).finalizeFailedPayment(any(), any());
         verify(paymentEventPublisher, never()).publish(any());
     }

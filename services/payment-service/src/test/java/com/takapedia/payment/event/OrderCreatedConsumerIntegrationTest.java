@@ -68,7 +68,8 @@ class OrderCreatedConsumerIntegrationTest {
 
         // Default: Midtrans return sukses
         when(midtransClient.charge(any(MidtransChargeRequest.class)))
-                .thenReturn(new MidtransChargeResponse("VA-BCA-TEST", MidtransPaymentStatus.PENDING));
+                .thenReturn(new MidtransChargeResponse("VA-BCA-TEST", MidtransPaymentStatus.PENDING,
+                        java.time.Instant.now().plusSeconds(900)));
     }
 
     @Test

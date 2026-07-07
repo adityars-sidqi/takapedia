@@ -7,12 +7,20 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     Optional<Payment> findByOrderId(UUID orderId);
+
+    /**
+     * Kandidat reconciliation: Payment yang masih PENDING dan sudah melewati expiresAt.
+     * Dipakai job untuk mendeteksi VA kedaluwarsa yang tidak dikonfirmasi via webhook.
+     */
+    List<Payment> findByStatusAndExpiresAtBefore(PaymentStatus status, Instant cutoff);
 
     /**
      * Conditional update atomik: ubah status HANYA jika status saat ini PENDING.

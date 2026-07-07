@@ -10,7 +10,8 @@
     },
     "jsonBody": {
       "externalReference": "VA-BCA-{{randomValue length=8 type='NUMERIC'}}",
-      "status": "PENDING"
+      "status": "PENDING",
+      "expiryTime": "{{now offset='15 minutes' format=\"yyyy-MM-dd'T'HH:mm:ss'Z'\"}}"
     },
     "transformers": ["response-template"]
   }

@@ -7,6 +7,7 @@ import com.takapedia.payment.event.PaymentEventPublisher;
 import com.takapedia.payment.event.PaymentOutcome;
 import com.takapedia.payment.exception.MidtransClient4xxException;
 import com.takapedia.payment.exception.MidtransServerException;
+import com.takapedia.payment.config.PaymentProperties;
 import com.takapedia.payment.integration.midtrans.MidtransChargeRequest;
 import com.takapedia.payment.integration.midtrans.MidtransChargeResponse;
 import com.takapedia.payment.integration.midtrans.MidtransClient;
@@ -25,14 +26,18 @@ public class PaymentService {
     private final PaymentPersistenceService paymentPersistenceService;
     private final MidtransClient midtransClient;
     private final PaymentEventPublisher paymentEventPublisher;
+    private final PaymentProperties paymentProperties;
 
     public void initializePayment(OrderCreatedEvent event) {
         // Transaction 1: idempotency + Payment INITIATED
         Payment payment = paymentPersistenceService.initializePaymentRecord(event);
 
-        // Call Midtrans DI LUAR transaction untuk bikin VA
+        // Call Midtrans DI LUAR transaction untuk bikin VA.
+        // Kita dikte umur VA lewat custom_expiry; expiry_time di response yang jadi acuan.
         MidtransChargeRequest chargeRequest = new MidtransChargeRequest(
-                event.orderId(), event.amount(), event.paymentMethod());
+                event.orderId(), event.amount(), event.paymentMethod(),
+                new MidtransChargeRequest.CustomExpiry(
+                        paymentProperties.vaExpiry().toMinutes(), "minute"));
 
         try {
             MidtransChargeResponse response = midtransClient.charge(chargeRequest);
@@ -40,8 +45,9 @@ public class PaymentService {
             // Charge sukses = VA dibuat. Payment → PENDING, nunggu user bayar.
             // TIDAK publish PaymentCompleted — order tetap WAITING_PAYMENT.
             // Konfirmasi pembayaran akan datang lewat webhook Midtrans.
+            // expiresAt diambil dari response Midtrans (source of truth).
             paymentPersistenceService.markPending(
-                    payment.getOrderId(), response.externalReference());
+                    payment.getOrderId(), response.externalReference(), response.expiryTime());
 
         } catch (MidtransServerException e) {
             // Gagal bikin VA (gateway down / circuit open). VA tidak tersedia,

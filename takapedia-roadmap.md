@@ -117,8 +117,8 @@ Target: sistem tahan banting. Belajar dari kegagalan yang kamu buat sendiri.
 
 ### Fase 5c — Reconciliation & Saga (belum) ⬜
 
-- [ ] Scheduled job: scan Payment `PENDING` melewati batas → tandai kadaluarsa
-- [ ] Penanganan **race condition** (conditional update / optimistic locking) webhook vs job
+- [x] Scheduled job: scan Payment `PENDING` melewati batas → tandai kadaluarsa
+- [x] Penanganan **race condition** (conditional update) webhook vs job
 - [ ] Saga: refactor Inventory jadi *reserve → commit* (potong stok saat `PaymentCompleted(SUCCESS)`, bukan saat `OrderCreated`)
 - [ ] Caching dengan **Redis**
 
@@ -171,4 +171,4 @@ Pakai Spring Boot dulu untuk Fase 1–4 supaya fokus ke konsep arsitektur, bukan
 - [x] Split-transaction (network call di luar `@Transactional`) — Fase 5a
 - [ ] Transactional Outbox — Fase 6
 - [ ] Saga (reserve→commit) — Fase 5c
-- [ ] Reconciliation job + race condition handling — Fase 5c
+- [x] Reconciliation job + race condition handling — Fase 5c

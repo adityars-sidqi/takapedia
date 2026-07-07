@@ -16,6 +16,13 @@ spring:
         jwt:
           jwk-set-uri: http://localhost:9999/mock-jwks
 
+payment:
+  va-expiry: 15m
+  reconciliation:
+    # Besar sengaja: job penjadwalan tidak boleh ikut jalan saat test (dipicu manual di unit test).
+    scan-rate: 3600000
+    grace: 5m
+
 midtrans:
   base-url: http://localhost:9999
   connect-timeout: 3s

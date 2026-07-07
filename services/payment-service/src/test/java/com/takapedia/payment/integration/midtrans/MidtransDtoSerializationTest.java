@@ -6,6 +6,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,7 +38,8 @@ class MidtransDtoSerializationTest {
         String json = """
                 {
                   "externalReference": "VA-BCA-12345678",
-                  "status": "PENDING"
+                  "status": "PENDING",
+                  "expiryTime": "2026-07-04T10:15:00Z"
                 }
                 """;
 
@@ -45,5 +47,6 @@ class MidtransDtoSerializationTest {
 
         assertThat(response.externalReference()).isEqualTo("VA-BCA-12345678");
         assertThat(response.status()).isEqualTo(MidtransPaymentStatus.PENDING);
+        assertThat(response.expiryTime()).isEqualTo(Instant.parse("2026-07-04T10:15:00Z"));
     }
 }
