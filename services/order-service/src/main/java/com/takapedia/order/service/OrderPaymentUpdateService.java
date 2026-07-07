@@ -43,9 +43,13 @@ public class OrderPaymentUpdateService {
             return;
         }
 
-        OrderStatus newStatus = event.outcome() == PaymentOutcome.SUCCESS
-                ? OrderStatus.PAID
-                : OrderStatus.PAYMENT_FAILED;
+        // Switch eksplisit & exhaustive: kalau PaymentOutcome nambah nilai baru,
+        // compile gagal → memaksa keputusan mapping, bukan diam-diam jatuh ke default.
+        OrderStatus newStatus = switch (event.outcome()) {
+            case SUCCESS -> OrderStatus.PAID;
+            case EXPIRED -> OrderStatus.EXPIRED;
+            case FAILED -> OrderStatus.PAYMENT_FAILED;
+        };
 
         order.setStatus(newStatus);
         orderRepository.save(order);

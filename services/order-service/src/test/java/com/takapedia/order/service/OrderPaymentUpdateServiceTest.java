@@ -56,6 +56,13 @@ class OrderPaymentUpdateServiceTest {
                 Instant.parse("2026-07-04T10:00:00Z"));
     }
 
+    private PaymentCompletedEvent expiredEvent(UUID orderId) {
+        return new PaymentCompletedEvent(
+                UUID.randomUUID(), orderId, PaymentOutcome.EXPIRED,
+                null, "EXPIRE",
+                Instant.parse("2026-07-04T10:00:00Z"));
+    }
+
     @Test
     void applyPaymentOutcome_transitionsToPaid_whenSuccessAndOrderIsWaiting() {
         UUID orderId = UUID.randomUUID();
@@ -80,6 +87,19 @@ class OrderPaymentUpdateServiceTest {
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(OrderStatus.PAYMENT_FAILED);
+    }
+
+    @Test
+    void applyPaymentOutcome_transitionsToExpired_whenExpiredAndOrderIsWaiting() {
+        UUID orderId = UUID.randomUUID();
+        Order order = waitingOrder(orderId);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        service.applyPaymentOutcome(expiredEvent(orderId));
+
+        ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(OrderStatus.EXPIRED);
     }
 
     @Test
