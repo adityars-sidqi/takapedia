@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -44,13 +45,15 @@ class OrderControllerTest {
         saved.setPaymentMethod(PaymentMethod.BCA_VA);
         saved.setAmount(BigDecimal.valueOf(30_000));
 
-        when(orderService.createOrder(any(UUID.class), anyInt(), any(PaymentMethod.class))).thenReturn(saved);
+        when(orderService.createOrder(any(UUID.class), anyInt(), any(PaymentMethod.class), anyString()))
+                .thenReturn(saved);
 
         String body = """
                 {
                   "productId": "%s",
                   "quantity": 3,
-                  "paymentMethod": "BCA_VA"
+                  "paymentMethod": "BCA_VA",
+                  "shippingAddress": "Jl. Mawar No. 1"
                 }
                 """.formatted(productId);
 

@@ -16,3 +16,14 @@ spring:
         jwt:
           jwk-set-uri: http://localhost:9999/mock-jwks
 
+  # Test resource ini bernama application.yaml → MENIMPA penuh application.yaml utama,
+  # termasuk blok kafka. Jadi group-id harus dideklarasikan ulang di sini, kalau tidak
+  # container @KafkaListener gagal start ("No group.id found ...").
+  kafka:
+    consumer:
+      group-id: order-service-test
+      # earliest: consumer baca dari offset 0 walau join group setelah pesan diproduksi.
+      # Tanpa ini (default 'latest'), pesan yang dikirim sebelum partisi ter-assign terlewat
+      # → test @EmbeddedKafka jadi flaky/timeout.
+      auto-offset-reset: earliest
+

@@ -58,6 +58,7 @@ class PaymentCompletedConsumerIntegrationTest {
         order.setQuantity(3);
         order.setPaymentMethod(PaymentMethod.BCA_VA);
         order.setAmount(BigDecimal.valueOf(30_000));
+        order.setShippingAddress("Jl. Mawar No. 1");
         order.setStatus(OrderStatus.WAITING_PAYMENT);
         Order savedOrder = orderRepository.save(order);
 
@@ -86,6 +87,7 @@ class PaymentCompletedConsumerIntegrationTest {
         order.setQuantity(3);
         order.setPaymentMethod(PaymentMethod.BCA_VA);
         order.setAmount(BigDecimal.valueOf(30_000));
+        order.setShippingAddress("Jl. Mawar No. 1");
         order.setStatus(OrderStatus.WAITING_PAYMENT);
         Order savedOrder = orderRepository.save(order);
 

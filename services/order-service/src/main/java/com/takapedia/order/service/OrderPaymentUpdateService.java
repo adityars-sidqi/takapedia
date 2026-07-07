@@ -26,13 +26,17 @@ public class OrderPaymentUpdateService {
      * Kalau order tidak ditemukan, log warning (kemungkinan event untuk order yang
      * belum di-commit, atau order-nya beneran hilang — worth investigate).
      */
+    /**
+     * @return Order bila baru saja transisi ke PAID (dipakai pemanggil untuk publish
+     *         OrderPaid di luar transaksi); Optional.empty() untuk outcome lain / skip.
+     */
     @Transactional
-    public void applyPaymentOutcome(PaymentCompletedEvent event) {
+    public Optional<Order> applyPaymentOutcome(PaymentCompletedEvent event) {
         Optional<Order> orderOpt = orderRepository.findById(event.orderId());
 
         if (orderOpt.isEmpty()) {
             log.warn("Received PaymentCompletedEvent for unknown orderId={}", event.orderId());
-            return;
+            return Optional.empty();
         }
 
         Order order = orderOpt.get();
@@ -40,7 +44,7 @@ public class OrderPaymentUpdateService {
         if (order.getStatus() != OrderStatus.WAITING_PAYMENT) {
             log.info("Order {} already in status {}, skipping payment outcome update",
                     event.orderId(), order.getStatus());
-            return;
+            return Optional.empty();
         }
 
         // Switch eksplisit & exhaustive: kalau PaymentOutcome nambah nilai baru,
@@ -53,5 +57,7 @@ public class OrderPaymentUpdateService {
 
         order.setStatus(newStatus);
         orderRepository.save(order);
+
+        return newStatus == OrderStatus.PAID ? Optional.of(order) : Optional.empty();
     }
 }

@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Instant;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -17,6 +19,7 @@ public class PaymentCompletedConsumer {
 
     private final ObjectMapper objectMapper;
     private final OrderPaymentUpdateService orderPaymentUpdateService;
+    private final OrderPaidPublisher orderPaidPublisher;
 
     @KafkaListener(topics = TOPIC)
     public void consume(String payload) {
@@ -29,7 +32,18 @@ public class PaymentCompletedConsumer {
         }
 
         try {
-            orderPaymentUpdateService.applyPaymentOutcome(event);
+            // applyPaymentOutcome commit dulu; publish OrderPaid DI LUAR transaksi
+            // (pola split-transaction). Hanya saat order benar-benar transisi ke PAID.
+            orderPaymentUpdateService.applyPaymentOutcome(event).ifPresent(order -> {
+                orderPaidPublisher.publish(new OrderPaidEvent(
+                        order.getId(),
+                        order.getProductId(),
+                        order.getQuantity(),
+                        order.getShippingAddress(),
+                        order.getAmount(),
+                        Instant.now()));
+                log.info("Published OrderPaid for orderId={}", order.getId());
+            });
             log.info("Order {} updated with payment outcome={}",
                     event.orderId(), event.outcome());
         } catch (Exception e) {

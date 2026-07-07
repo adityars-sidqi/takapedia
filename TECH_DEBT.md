@@ -49,9 +49,9 @@
 - Proper: ekstrak userId dari JWT claim saat POST /orders
 - Ditunda ke sub-fase security
 
-## shippingAddress di Order
-- Sekarang: order belum punya alamat pengiriman
-- Dibutuhkan saat Delivery Service dibangun (Fase 6)
+## ✅ shippingAddress di Order — SELESAI 2026-07-07
+- Order menangkap shippingAddress saat create (CreateOrderRequest + entity),
+  dipropagasi lewat OrderPaid → Delivery Service menyimpannya di Shipment.
 
 ## ✅ EXPIRED mapping di Order Service (Fase 5b) — SELESAI 2026-07-07
 - Keputusan di-lock: OrderStatus.EXPIRED eksplisit (bukan digabung ke PAYMENT_FAILED),

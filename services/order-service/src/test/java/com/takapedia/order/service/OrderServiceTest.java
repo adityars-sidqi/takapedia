@@ -46,7 +46,7 @@ class OrderServiceTest {
             return toSave;
         });
 
-        Order result = orderService.createOrder(productId, quantity, paymentMethod);
+        Order result = orderService.createOrder(productId, quantity, paymentMethod, "Jl. Mawar No. 1");
 
         // 1. Order tersimpan dengan status PENDING
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
@@ -57,6 +57,7 @@ class OrderServiceTest {
         assertThat(saved.getStatus()).isEqualTo(OrderStatus.WAITING_PAYMENT);
         assertThat(saved.getPaymentMethod()).isEqualTo(PaymentMethod.BCA_VA);
         assertThat(saved.getAmount()).isEqualByComparingTo(expectedAmount);
+        assertThat(saved.getShippingAddress()).isEqualTo("Jl. Mawar No. 1");
 
         // 2. Event diterbitkan dengan data yang benar
         ArgumentCaptor<OrderCreatedEvent> eventCaptor =

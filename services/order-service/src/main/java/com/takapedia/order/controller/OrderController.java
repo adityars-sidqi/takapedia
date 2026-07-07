@@ -22,7 +22,8 @@ public class OrderController {
         Order order = orderService.createOrder(
                 request.productId(),
                 request.quantity(),
-                request.paymentMethod()
+                request.paymentMethod(),
+                request.shippingAddress()
         );
         return OrderResponse.from(order);
     }

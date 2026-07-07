@@ -21,7 +21,8 @@ public class OrderService {
 
     private static final BigDecimal DUMMY_UNIT_PRICE = BigDecimal.valueOf(10_000);
 
-    public Order createOrder(UUID productId, int quantity, PaymentMethod paymentMethod) {
+    public Order createOrder(UUID productId, int quantity, PaymentMethod paymentMethod,
+                             String shippingAddress) {
         BigDecimal amount = DUMMY_UNIT_PRICE.multiply(BigDecimal.valueOf(quantity));
 
         Order order = new Order();
@@ -29,6 +30,7 @@ public class OrderService {
         order.setQuantity(quantity);
         order.setPaymentMethod(paymentMethod);
         order.setAmount(amount);
+        order.setShippingAddress(shippingAddress);
         order.setStatus(OrderStatus.WAITING_PAYMENT);
 
         Order savedOrder = orderRepository.save(order);

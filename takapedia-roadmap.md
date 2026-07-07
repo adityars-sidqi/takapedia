@@ -129,7 +129,7 @@ Target: sistem tahan banting. Belajar dari kegagalan yang kamu buat sendiri.
 Target: lengkapi service tersisa + lapisan observasi.
 
 - [ ] Bangun **Notification Service** (kirim email invoice; kandidat bagus untuk **Go**)
-- [ ] Bangun **Delivery Service** (consume order yang sudah `PAID` → proses pengiriman)
+- [x] Bangun **Delivery Service** (consume `OrderPaid` → buat Shipment PENDING, idempotent)
 - [ ] **Log Management** terpusat (ELK stack)
 - [ ] Distributed tracing
 - [ ] **Transactional Outbox** — publikasi event atomik dengan penulisan DB
