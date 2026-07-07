@@ -9,3 +9,8 @@ spring:
     hibernate:
       ddl-auto: create-drop
     database-platform: org.hibernate.dialect.H2Dialect
+
+jwt:
+  private-key: classpath:keys/test_private_key.pem
+  public-key: classpath:keys/public_key.pem
+  expiration-ms: 900000 # 15 Menit

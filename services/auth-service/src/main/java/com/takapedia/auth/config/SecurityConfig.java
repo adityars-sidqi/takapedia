@@ -19,7 +19,8 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/.well-known/jwks.json").permitAll()
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
+                        // /me (dan endpoint auth lain) wajib punya token valid
                         .anyRequest().authenticated()
                 )
                 // Resource Server: validasi JWT via decoder (pakai public key kita)

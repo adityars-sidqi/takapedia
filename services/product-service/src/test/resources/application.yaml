@@ -10,5 +10,10 @@ spring:
       ddl-auto: create-drop
     database-platform: org.hibernate.dialect.H2Dialect
 
-jwt:
-  public-key: classpath:keys/public_key.pem
+  # Resource server memvalidasi JWT lewat public key lokal supaya context
+  # bisa boot tanpa memanggil JWKS auth-service saat test.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          public-key-location: classpath:keys/public_key.pem

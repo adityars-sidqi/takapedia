@@ -49,7 +49,7 @@ class ProductServiceTest {
         UUID id = UUID.randomUUID();
         Product product = new Product(
                 id, "Laptop", "Gaming laptop",
-                new BigDecimal("15000000.00"), Instant.now()
+                new BigDecimal("15000000.00"), "Electronics", "Asus", Instant.now()
         );
         when(productRepository.findById(id)).thenReturn(Optional.of(product));
 
@@ -65,7 +65,7 @@ class ProductServiceTest {
     void add_whenValidRequest_savesAndReturnsProduct() {
         // Arrange
         CreateProductRequest request = new CreateProductRequest(
-                "Laptop", "Gaming laptop", new BigDecimal("15000000.00")
+                "Laptop", "Gaming laptop", new BigDecimal("15000000.00"), "Electronics", "Asus"
         );
         when(productRepository.save(any(Product.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -77,6 +77,8 @@ class ProductServiceTest {
         assertThat(result.getName()).isEqualTo("Laptop");
         assertThat(result.getDescription()).isEqualTo("Gaming laptop");
         assertThat(result.getPrice()).isEqualByComparingTo("15000000.00");
+        assertThat(result.getCategory()).isEqualTo("Electronics");
+        assertThat(result.getBrand()).isEqualTo("Asus");
         assertThat(result.getCreatedAt()).isNotNull();
 
         ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
@@ -90,10 +92,10 @@ class ProductServiceTest {
         UUID id = UUID.randomUUID();
         Product existing = new Product(
                 id, "Laptop", "Old description",
-                new BigDecimal("15000000.00"), Instant.now()
+                new BigDecimal("15000000.00"), "Electronics", "Asus", Instant.now()
         );
         UpdateProductRequest request = new UpdateProductRequest(
-                "Laptop Pro", "New description", new BigDecimal("20000000.00")
+                "Laptop Pro", "New description", new BigDecimal("20000000.00"), "Computers", "Lenovo"
         );
         when(productRepository.findById(id)).thenReturn(Optional.of(existing));
         when(productRepository.save(any(Product.class)))
@@ -106,6 +108,8 @@ class ProductServiceTest {
         assertThat(result.getName()).isEqualTo("Laptop Pro");
         assertThat(result.getDescription()).isEqualTo("New description");
         assertThat(result.getPrice()).isEqualByComparingTo("20000000.00");
+        assertThat(result.getCategory()).isEqualTo("Computers");
+        assertThat(result.getBrand()).isEqualTo("Lenovo");
     }
 
     @Test
@@ -113,7 +117,7 @@ class ProductServiceTest {
         // Arrange
         UUID id = UUID.randomUUID();
         UpdateProductRequest request = new UpdateProductRequest(
-                "Laptop Pro", "New description", new BigDecimal("20000000.00")
+                "Laptop Pro", "New description", new BigDecimal("20000000.00"), "Computers", "Lenovo"
         );
         when(productRepository.findById(id)).thenReturn(Optional.empty());
 
