@@ -73,6 +73,30 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
 
+  # --- Log Management terpusat (EFK: Elasticsearch + Filebeat + Kibana) ---
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    container_name: takapedia-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://takapedia-elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.15.0
+    container_name: takapedia-filebeat
+    user: root
+    command: ["filebeat", "-e", "--strict.perms=false"]
+    volumes:
+      - ./infra/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - elasticsearch
+      - kibana
+
   wiremock:
     image: wiremock/wiremock:3.9.1
     container_name: takapedia-wiremock

@@ -130,7 +130,7 @@ Target: lengkapi service tersisa + lapisan observasi.
 
 - [x] Bangun **Notification Service** (Go): consume `payment.completed` → notifikasi/invoice per outcome, idempotent
 - [x] Bangun **Delivery Service** (consume `OrderPaid` → Shipment PENDING, idempotent; lifecycle PENDING→SHIPPED→DELIVERED via REST)
-- [ ] **Log Management** terpusat (ELK stack)
+- [x] **Log Management** terpusat (EFK: Filebeat → Elasticsearch → Kibana)
 - [x] Distributed tracing (Micrometer/Brave + Zipkin di order & payment sebagai reference; propagasi lintas-service via Kafka)
 - [x] **Transactional Outbox** — outbox_events + relay terjadwal di Payment Service (reference impl)
 - [ ] Refactor pakai **Design Pattern** yang muncul natural saat dibutuhkan
@@ -157,7 +157,7 @@ Pakai Spring Boot dulu untuk Fase 1–4 supaya fokus ke konsep arsitektur, bukan
 - [x] Circuit Breaker (Fase 5a — Resilience4j)
 - [x] Rate Limiter (Fase 2)
 - [x] API versioning (Fase 1)
-- [ ] Log Management (Fase 6)
+- [x] Log Management (Fase 6 — EFK stack)
 - [ ] Design Pattern (Fase 6)
 - [x] Test-Driven Development (Fase 1+)
 - [x] Event-Driven (Fase 3)

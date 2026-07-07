@@ -1,0 +1,23 @@
+# Filebeat: mengumpulkan log semua container (via Docker autodiscover) → Elasticsearch.
+# Log terpusat dapat dilihat di Kibana (index pattern filebeat-*).
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+
+processors:
+  - add_docker_metadata: ~
+
+output.elasticsearch:
+  hosts: ["http://takapedia-elasticsearch:9200"]
+
+setup.kibana:
+  host: "http://takapedia-kibana:5601"
+
+# Single-node dev: matikan ILM + kecilkan shard/replica.
+setup.ilm.enabled: false
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0
+
+logging.level: info
