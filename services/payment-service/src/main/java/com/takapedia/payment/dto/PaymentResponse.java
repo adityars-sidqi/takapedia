@@ -4,6 +4,7 @@ import com.takapedia.payment.entity.Payment;
 import com.takapedia.payment.entity.PaymentMethod;
 import com.takapedia.payment.entity.PaymentStatus;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -17,7 +18,7 @@ public record PaymentResponse(
         String failureReason,
         Instant createdAt,
         Instant updatedAt
-) {
+) implements Serializable {
     public static PaymentResponse from(Payment p) {
         return new PaymentResponse(
                 p.getOrderId(),

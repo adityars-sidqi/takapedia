@@ -105,3 +105,13 @@
   Payment batalkan VA. Ditunda; butuh event baru + consumer di Order Service.
 - Terkait: idempotency Inventory kini via Reservation.status (DEDUCTED→CONFIRMED/RETURNED),
   menggantikan processed_events.
+
+
+## Cache staleness pada GET /payments/{orderId} (Fase 5c)
+- Read path di-cache (Redis) karena sering di-poll. Invalidasi: @CacheEvict di markPending,
+  finalizeFailedPayment, expireIfStillPending, dan WebhookProcessingService.process.
+- Batasan: @CacheEvict (beforeInvocation=false) jalan setelah method return, bisa mendahului
+  commit transaksi → ada jendela kecil di mana read konkuren mengisi ulang cache dari nilai lama.
+- Mitigasi terpasang: TTL pendek (10s) membatasi staleness maksimum apa pun yang terjadi.
+- Proper (kalau perlu strict): evict setelah commit (mis. TransactionSynchronization /
+  @TransactionalEventListener AFTER_COMMIT). Ditunda; TTL pendek dianggap cukup untuk polling.

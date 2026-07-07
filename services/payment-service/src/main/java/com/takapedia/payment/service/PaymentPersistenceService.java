@@ -8,6 +8,7 @@ import com.takapedia.payment.exception.AlreadyProcessedException;
 import com.takapedia.payment.repository.PaymentRepository;
 import com.takapedia.payment.repository.ProcessedEventRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +53,7 @@ public class PaymentPersistenceService {
      * Payment pindah ke PENDING — menunggu user transfer ke VA.
      * BELUM final; konfirmasi pembayaran datang lewat webhook.
      */
+    @CacheEvict(cacheNames = "payments", key = "#orderId")
     @Transactional
     public Payment markPending(UUID orderId, String externalReference, Instant expiresAt) {
         Payment payment = findByOrderIdOrThrow(orderId);
@@ -67,6 +69,7 @@ public class PaymentPersistenceService {
      * Return true kalau transisi terjadi; false kalau sudah bukan PENDING (mis. webhook settlement
      * menang balapan) — pemanggil memakai ini untuk memutuskan publish PaymentCompleted(EXPIRED).
      */
+    @CacheEvict(cacheNames = "payments", key = "#orderId")
     @Transactional
     public boolean expireIfStillPending(UUID orderId) {
         int updated = paymentRepository.updateStatusIfCurrentMatches(
@@ -77,6 +80,7 @@ public class PaymentPersistenceService {
     /**
      * Transaction 2 (varian gagal): update Payment status ke FAILED + failureReason.
      */
+    @CacheEvict(cacheNames = "payments", key = "#orderId")
     @Transactional
     public Payment finalizeFailedPayment(UUID orderId, String failureReason) {
         Payment payment = findByOrderIdOrThrow(orderId);

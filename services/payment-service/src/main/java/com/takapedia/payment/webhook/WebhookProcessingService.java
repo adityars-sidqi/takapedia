@@ -6,6 +6,7 @@ import com.takapedia.payment.event.PaymentOutcome;
 import com.takapedia.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class WebhookProcessingService {
 
     private final PaymentRepository paymentRepository;
 
+    @CacheEvict(cacheNames = "payments", key = "#orderId")
     @Transactional
     public WebhookProcessingResult process(UUID orderId, MidtransTransactionStatus status) {
         Optional<Payment> paymentOpt = paymentRepository.findByOrderId(orderId);

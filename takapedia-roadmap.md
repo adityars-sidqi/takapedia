@@ -120,7 +120,7 @@ Target: sistem tahan banting. Belajar dari kegagalan yang kamu buat sendiri.
 - [x] Scheduled job: scan Payment `PENDING` melewati batas → tandai kadaluarsa
 - [x] Penanganan **race condition** (conditional update) webhook vs job
 - [x] Saga: Inventory potong stok saat `OrderCreated` (VA dibuat), kembalikan saat `PaymentCompleted(FAILED/EXPIRED)` — compensating transaction (deduct-on-order)
-- [ ] Caching dengan **Redis**
+- [x] Caching dengan **Redis** (cache-aside di endpoint polling `GET /payments/{orderId}`, TTL pendek + evict saat transisi status)
 
 ---
 
@@ -150,7 +150,7 @@ Pakai Spring Boot dulu untuk Fase 1–4 supaya fokus ke konsep arsitektur, bukan
 - [x] Spring Boot (Fase 1+)
 - [x] Go Lang (Fase 3 — Inventory Service)
 - [x] Kafka (Fase 3)
-- [ ] Redis (Fase 5c — caching; sudah dipakai untuk rate limiter di Fase 2)
+- [x] Redis (Fase 5c — caching payment polling; juga rate limiter di Fase 2)
 - [x] ElasticSearch / OpenSearch (Fase 4)
 - [x] OAuth2 / Session Management (Fase 1)
 - [x] Git (Fase 0+)

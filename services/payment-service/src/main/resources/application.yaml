@@ -8,6 +8,16 @@ spring:
           # Auth Service menerbitkan JWKS (sama seperti Order Service)
           jwk-set-uri: http://localhost:8081/.well-known/jwks.json
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  cache:
+    type: redis
+    redis:
+      # TTL pendek: status payment berubah-ubah & sering di-poll. Batasi staleness.
+      time-to-live: 10s
+
   datasource:
     url: jdbc:postgresql://localhost:5432/payment_db
     username: takapedia
