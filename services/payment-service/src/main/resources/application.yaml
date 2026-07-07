@@ -48,6 +48,9 @@ payment:
     scan-rate: 60000
     # Buffer sebelum job berani men-EXPIRED (job = jaring pengaman, webhook = sinyal utama).
     grace: 5m
+  outbox:
+    # Cadence relay outbox → Kafka (milidetik).
+    relay-rate: 2000
 
 midtrans:
   base-url: http://localhost:8091

@@ -20,11 +20,15 @@
 - Risk: kontrak event jadi implisit, mudah drift
 - Action: pertimbangkan versioning schema (Confluent Schema Registry) atau at minimum, dokumentasi kontrak event terpusat
 
-## Publisher failure setelah DB commit di PaymentService
-- Skenario: Payment record sudah di-finalize (SUCCESS/FAILED), publish Kafka gagal
-- Konsekuensi: Order Service tidak tahu payment sudah selesai
-- Solusi proper: Transactional Outbox pattern
-- Ditunda ke fase resilience terpisah
+## ✅ Publisher failure setelah DB commit di PaymentService — DITANGANI (Outbox) 2026-07-07
+- Solusi: Outbox pattern. PaymentEventPublisher kini OutboxEventPublisher — menulis event ke
+  tabel outbox_events (bukan kirim Kafka langsung). OutboxRelay (@Scheduled) mem-publish ke Kafka
+  lalu tandai publishedAt; kalau Kafka down, baris tetap tersimpan & di-retry (at-least-once).
+- Nuansa (belum atomik penuh): enqueue terjadi di OutboxEventPublisher.publish() yang dipanggil
+  tepat SETELAH transaksi bisnis commit, bukan di dalam transaksi yang sama. Jendela kehilangan
+  jauh lebih kecil (tulis DB lokal vs kirim jaringan). Untuk atomik penuh, enqueue harus di dalam
+  @Transactional method yang mengubah Payment (WebhookProcessingService.process, expireIfStillPending,
+  finalizeFailedPayment) — kandidat refinement berikutnya.
 
 ## Payment stuck di INITIATED bila crash antara Transaction 1 dan Midtrans call
 - Skenario: split-transaction — Payment tersimpan INITIATED (T1 commit), lalu proses

@@ -132,7 +132,7 @@ Target: lengkapi service tersisa + lapisan observasi.
 - [x] Bangun **Delivery Service** (consume `OrderPaid` → Shipment PENDING, idempotent; lifecycle PENDING→SHIPPED→DELIVERED via REST)
 - [ ] **Log Management** terpusat (ELK stack)
 - [ ] Distributed tracing
-- [ ] **Transactional Outbox** — publikasi event atomik dengan penulisan DB
+- [x] **Transactional Outbox** — outbox_events + relay terjadwal di Payment Service (reference impl)
 - [ ] Refactor pakai **Design Pattern** yang muncul natural saat dibutuhkan
 
 Design pattern paling baik dipelajari saat kamu merasa butuhnya, bukan dihafal di awal.
@@ -169,6 +169,6 @@ Pakai Spring Boot dulu untuk Fase 1–4 supaya fokus ke konsep arsitektur, bukan
 - [x] Change Data Capture / Debezium — Fase 4
 - [x] Webhook + signature verification — Fase 5b (dirancang)
 - [x] Split-transaction (network call di luar `@Transactional`) — Fase 5a
-- [ ] Transactional Outbox — Fase 6
+- [x] Transactional Outbox — Payment Service (reference) — Fase 6
 - [x] Saga (deduct-on-order + compensate-on-failure) — Fase 5c
 - [x] Reconciliation job + race condition handling — Fase 5c
