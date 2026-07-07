@@ -131,7 +131,7 @@ Target: lengkapi service tersisa + lapisan observasi.
 - [x] Bangun **Notification Service** (Go): consume `payment.completed` → notifikasi/invoice per outcome, idempotent
 - [x] Bangun **Delivery Service** (consume `OrderPaid` → Shipment PENDING, idempotent; lifecycle PENDING→SHIPPED→DELIVERED via REST)
 - [x] **Log Management** terpusat (EFK: Filebeat → Elasticsearch → Kibana)
-- [x] Distributed tracing (Micrometer/Brave + Zipkin di order & payment sebagai reference; propagasi lintas-service via Kafka)
+- [x] Distributed tracing (Micrometer/Brave + Zipkin di order, payment, auth, product, delivery; propagasi lintas-service via Kafka)
 - [x] **Transactional Outbox** — outbox_events + relay terjadwal di Payment Service (reference impl)
 - [ ] Refactor pakai **Design Pattern** yang muncul natural saat dibutuhkan
 

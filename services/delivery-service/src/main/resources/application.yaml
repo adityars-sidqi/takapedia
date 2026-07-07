@@ -1,3 +1,6 @@
+server:
+  port: 8088
+
 spring:
   application:
     name: delivery-service
@@ -23,3 +26,14 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    # Observasi Kafka consumer: trace context ikut dari OrderPaid → Shipment
+    listener:
+      observation-enabled: true
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      zipkin:
+        endpoint: http://localhost:9411/api/v2/spans

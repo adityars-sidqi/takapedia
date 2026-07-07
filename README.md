@@ -10,6 +10,8 @@ Prinsip yang dijaga sepanjang proyek: **satu service sampai matang, baru tambah 
 
 Takapedia terdiri dari beberapa service yang berkomunikasi lewat REST (sinkron) dan Kafka (asinkron, event-driven). Setiap service memiliki database sendiri (*database-per-service*) dan memvalidasi JWT secara mandiri (*zero-trust per service*).
 
+Selain alur inti di bawah, **Delivery Service** meng-*consume* `OrderPaid` (Order → Delivery) untuk membuat *shipment* (lifecycle `PENDING → SHIPPED → DELIVERED`), dan **Notification Service** (Go) meng-*consume* `PaymentCompleted` untuk mengirim notifikasi/invoice. Semua service Spring mengekspor *trace* ke **Zipkin**, dan log container dikirim ke **ElasticSearch/Kibana** via **Filebeat**.
+
 ```
                          ┌─────────────┐
             ┌───────────▶│ Auth Service│  (JWT RS256, register/login)
@@ -42,14 +44,19 @@ Takapedia terdiri dari beberapa service yang berkomunikasi lewat REST (sinkron) 
 
 ### Pola yang digunakan
 
-- **Database-per-service** — tiap service punya database terpisah dalam satu container PostgreSQL (`auth_db`, `product_db`, `order_db`, `inventory_db`, `payment_db`, `product_search_db`).
+- **Database-per-service** — tiap service punya database terpisah dalam satu container PostgreSQL (`auth_db`, `product_db`, `order_db`, `inventory_db`, `payment_db`, `delivery_db`, `notification_db`). Product-Search memakai ElasticSearch sebagai *read-store*, bukan PostgreSQL.
 - **Event-Driven** — Order Service mem-*publish* `OrderCreated` ke Kafka; Inventory Service meng-*consume* dan mengurangi stok.
 - **Idempotent consumer** — Inventory menjaga tabel `processed_events` dengan `order_id` sebagai primary key, sehingga event yang diproses berkali-kali (Kafka *at-least-once*) hanya berefek sekali.
 - **CQRS + CDC** — Product Service menulis ke PostgreSQL (write-model); Debezium menangkap perubahan dari WAL dan menyinkronkannya ke ElasticSearch (read-model) lewat Kafka Connect, **tanpa kode aplikasi**.
 - **Wire format JSON language-agnostic** — event Kafka berupa JSON polos agar dapat dikonsumsi lintas bahasa (Java ↔ Go).
 - **Resilience (Circuit Breaker)** — Payment Service memanggil gateway pembayaran (Midtrans) lewat REST yang dilindungi Circuit Breaker (Resilience4j). Saat gateway gagal beruntun, circuit membuka (*OPEN*) dan panggilan berikutnya di-*block* via *fallback* — mencegah *cascading failure*. Circuit pulih otomatis (*HALF_OPEN → CLOSED*) saat gateway sehat kembali.
 - **Split-transaction untuk network call** — panggilan HTTP ke gateway tidak dibungkus `@Transactional`, agar koneksi database tidak ditahan selama menunggu respons jaringan (mencegah *connection pool exhaustion*).
-- **Choreography saga (dua event)** — `OrderCreated` (Order → Payment) dan `PaymentCompleted` (Payment → Order) membentuk alur pembayaran asinkron: order dibuat sebagai `WAITING_PAYMENT`, lalu berpindah ke `PAID`/`PAYMENT_FAILED` berdasarkan hasil pembayaran.
+- **Choreography saga (dua event)** — `OrderCreated` (Order → Payment) dan `PaymentCompleted` (Payment → Order) membentuk alur pembayaran asinkron: order dibuat sebagai `WAITING_PAYMENT`, lalu berpindah ke `PAID`/`PAYMENT_FAILED`/`EXPIRED` berdasarkan hasil pembayaran.
+- **Saga + compensating transaction** — Inventory memotong stok saat `OrderCreated`; bila pembayaran `FAILED`/`EXPIRED`, stok dikembalikan. Bila stok kurang saat reserve, Inventory mem-*publish* `StockReservationFailed` → Order di-`CANCELLED` **dan** Payment mem-*void* VA (Midtrans cancel) — kompensasi lintas-service penuh.
+- **Reconciliation job + conditional update atomik** — job terjadwal menandai VA `PENDING` yang kedaluwarsa jadi `EXPIRED`; transisi memakai *conditional update* (`WHERE status=PENDING`) agar aman terhadap balapan webhook vs job.
+- **Transactional Outbox** — Payment menulis `PaymentCompleted` ke tabel `outbox_events`, lalu relay terjadwal mem-*publish* ke Kafka dengan retry — event tak hilang saat Kafka tak tersedia (*at-least-once*).
+- **Cache-aside (Redis)** — endpoint polling `GET /payments/{orderId}` di-cache dengan TTL pendek + `@CacheEvict` saat transisi status.
+- **Observability** — *distributed tracing* (Micrometer + Brave → Zipkin; trace context ikut lewat HTTP & Kafka) dan *centralized logging* (Filebeat → ElasticSearch → Kibana, EFK).
 
 ---
 
@@ -65,6 +72,8 @@ Takapedia terdiri dari beberapa service yang berkomunikasi lewat REST (sinkron) 
 | Cache / Rate Limit | Redis 7 |
 | Search | ElasticSearch 8.15 |
 | CDC | Debezium (PostgreSQL connector) via Kafka Connect |
+| Tracing | Micrometer Tracing + Brave → Zipkin |
+| Log Management | Filebeat → ElasticSearch → Kibana (EFK) |
 | Resilience | Resilience4j (Circuit Breaker) |
 | Payment Gateway | Midtrans (disimulasikan via WireMock) |
 | Auth | JWT RS256 (RSA key pair) |
@@ -83,13 +92,16 @@ Takapedia/
 │   ├── product-service/      # Spring Boot — CRUD produk (write-model)
 │   ├── api-gateway/          # Spring Cloud Gateway — routing, rate limiter
 │   ├── order-service/        # Spring Boot — publish OrderCreated, consume PaymentCompleted
-│   ├── payment-service/      # Spring Boot — consume OrderCreated, charge Midtrans (Circuit Breaker), publish PaymentCompleted
-│   └── inventory-service/    # Go — consume OrderCreated, kurangi stok
+│   ├── payment-service/      # Spring Boot — consume OrderCreated, charge Midtrans (Circuit Breaker), Outbox, void VA
+│   ├── inventory-service/    # Go — consume OrderCreated (reserve stok) + compensation
+│   ├── delivery-service/     # Spring Boot — consume OrderPaid → Shipment (lifecycle + REST)
+│   └── notification-service/ # Go — consume PaymentCompleted → notifikasi (idempotent)
 ├── infra/
 │   ├── postgres/             # init.sql (multi-database)
 │   ├── debezium/             # konfigurasi connector Debezium & ES sink
 │   ├── connect-plugins/      # plugin Kafka Connect (TIDAK di-commit — lihat Setup)
-│   └── wiremock/             # mappings/ — stub Midtrans untuk uji manual resilience
+│   ├── wiremock/             # mappings/ — stub Midtrans untuk uji manual resilience
+│   └── filebeat/             # filebeat.yml — shipping log container → ElasticSearch (EFK)
 ├── docs/
 │   └── manual-resilience-testing.md   # playbook uji Circuit Breaker (matikan gateway → OPEN → recovery)
 ├── docker-compose.yml
@@ -186,16 +198,16 @@ curl http://localhost:8083/connectors/elasticsearch-sink/status
 ```bash
 cd services/auth-service
 mvn spring-boot:run
-# ulangi untuk product-service, api-gateway, order-service, payment-service
+# ulangi untuk product-service, api-gateway, order-service, payment-service, delivery-service
 ```
 
-Port tiap service: Gateway `8080`, Auth `8081`, Product `8082`, Product-Search `8085`, Order `8086`, Payment `8087`. Kafka UI `8090`, WireMock (mock Midtrans) `8091`.
+Port tiap service: Gateway `8080`, Auth `8081`, Product `8082`, Product-Search `8085`, Order `8086`, Payment `8087`, Delivery `8088`. Kafka UI `8090`, WireMock (mock Midtrans) `8091`. Observability: Zipkin `9411`, Kibana `5601`, ElasticSearch `9200`.
 
-**Inventory Service (Go):**
+**Service Go (Inventory & Notification):**
 
 ```bash
-cd services/inventory-service
-go run ./cmd/inventory
+cd services/inventory-service && go run ./cmd/inventory
+cd services/notification-service && go run ./cmd/notification
 ```
 
 ---
@@ -230,9 +242,9 @@ go test ./...
 | 3 | Event-Driven (Kafka, Order → Inventory, Go) | ✅ |
 | 4 | CQRS + Search (Debezium CDC → ElasticSearch) | ✅ |
 | 5a | Payment Service + Circuit Breaker (charge, fallback, PaymentCompleted) | ✅ |
-| 5b | Webhook Midtrans + status VA (PENDING→PAID/EXPIRED) + polling endpoint | 🔄 dirancang |
-| 5c | Saga (Inventory reserve→commit), reconciliation job, race handling | ⬜ |
-| 6 | Observability (logging, tracing) + Notification/Delivery Service | ⬜ |
+| 5b | Webhook Midtrans + status VA (PENDING→PAID/EXPIRED/FAILED) + polling endpoint + JWT | ✅ |
+| 5c | Saga (deduct-on-order + compensation), reconciliation job (EXPIRED), race handling, Redis cache | ✅ |
+| 6 | Notification & Delivery Service, Transactional Outbox, tracing (Zipkin), centralized logging (EFK) | ✅ |
 
 > **Catatan urutan:** Payment Service dibangun di Fase 5 (bukan Fase 6 seperti rencana roadmap awal) karena merupakan *use-case* paling natural untuk mempelajari Circuit Breaker — panggilan ke gateway pembayaran eksternal yang bisa gagal. Roadmap disesuaikan mengikuti kebutuhan belajar nyata.
 
@@ -242,4 +254,4 @@ go test ./...
 
 Proyek ini dibangun untuk pembelajaran, dengan beberapa keputusan yang sengaja disederhanakan untuk fokus pada konsep arsitektur (mis. ElasticSearch security dimatikan untuk development, key test di-generate lokal, kontrak Midtrans disederhanakan namun tetap menyimulasikan signature webhook). Circuit Breaker pada Payment Service telah diverifikasi secara empiris lewat playbook uji manual (matikan gateway → circuit OPEN → recovery otomatis); lihat `docs/manual-resilience-testing.md`.
 
-Peningkatan yang direncanakan (lihat `TECH_DEBT.md`): webhook Midtrans + status pembayaran berbasis VA (Fase 5b), reconciliation job + penanganan *race condition* (Fase 5c), Saga *reserve→commit* untuk Inventory, Transactional Outbox untuk publikasi event yang atomik dengan penulisan DB, migrasi JWT ke endpoint JWKS, serta centralized config.
+Roadmap Fase 0–6 telah selesai: saga + kompensasi lintas-service (Inventory/Order/Payment), reconciliation job, Redis *cache-aside*, Transactional Outbox (Payment), *distributed tracing* (Zipkin), dan *centralized logging* (EFK). Peningkatan yang masih tercatat di `TECH_DEBT.md`: Outbox yang **atomik penuh** (enqueue di dalam transaksi bisnis) + replikasi ke Order/Inventory, *retry-charge* untuk Payment yang nyangkut di `INITIATED`, migrasi JWT static-key → endpoint **JWKS**, serta *centralized config*.
