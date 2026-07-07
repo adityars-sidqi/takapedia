@@ -23,6 +23,12 @@ services:
     volumes:
       - redis_data:/data
 
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: takapedia-zipkin
+    ports:
+      - "9411:9411"
+
   kafka:
     image: apache/kafka:3.8.1
     container_name: takapedia-kafka

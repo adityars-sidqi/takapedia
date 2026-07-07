@@ -58,6 +58,16 @@
             <artifactId>spring-boot-starter-kafka</artifactId>
         </dependency>
 
+        <!-- Observability: distributed tracing (Brave + Zipkin) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-zipkin</artifactId>
+        </dependency>
+
         <!-- Validasi request body (@Valid) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

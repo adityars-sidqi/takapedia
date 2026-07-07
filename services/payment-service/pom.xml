@@ -70,6 +70,12 @@
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
 
+        <!-- Observability: distributed tracing (Brave + Zipkin) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-zipkin</artifactId>
+        </dependency>
+
         <!-- Driver Postgres -->
         <dependency>
             <groupId>org.postgresql</groupId>
