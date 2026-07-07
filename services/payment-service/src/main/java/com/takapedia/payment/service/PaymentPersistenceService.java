@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -75,6 +76,23 @@ public class PaymentPersistenceService {
         int updated = paymentRepository.updateStatusIfCurrentMatches(
                 orderId, PaymentStatus.PENDING, PaymentStatus.EXPIRED, FailureReasons.VA_EXPIRED);
         return updated == 1;
+    }
+
+    /**
+     * Kompensasi (stok tak tersedia): transisi PENDING → FAILED secara atomik.
+     * Return Payment (dengan nomor VA) bila transisi terjadi, supaya pemanggil bisa
+     * void VA di Midtrans; Optional.empty() bila bukan PENDING (belum ada VA / sudah final).
+     */
+    @CacheEvict(cacheNames = "payments", key = "#orderId")
+    @Transactional
+    public Optional<Payment> failIfPending(UUID orderId, String reason) {
+        Optional<Payment> opt = paymentRepository.findByOrderId(orderId);
+        if (opt.isEmpty()) {
+            return Optional.empty();
+        }
+        int updated = paymentRepository.updateStatusIfCurrentMatches(
+                orderId, PaymentStatus.PENDING, PaymentStatus.FAILED, reason);
+        return updated == 1 ? opt : Optional.empty();
     }
 
     /**

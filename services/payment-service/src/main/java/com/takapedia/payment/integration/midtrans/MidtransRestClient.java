@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.*;
 
+import java.util.UUID;
+
 @Component
 @Slf4j
 public class MidtransRestClient implements MidtransClient {
@@ -17,6 +19,30 @@ public class MidtransRestClient implements MidtransClient {
 
     public MidtransRestClient(RestClient midtransHttpClient) {
         this.restClient = midtransHttpClient;
+    }
+
+    @Override
+    public void cancel(UUID orderId) {
+        try {
+            restClient.post()
+                    .uri("/v2/{orderId}/cancel", orderId)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (HttpClientErrorException e) {
+            throw new MidtransClient4xxException(
+                    "Midtrans cancel rejected for orderId=" + orderId +
+                            " with status " + e.getStatusCode(), e);
+        } catch (HttpServerErrorException e) {
+            throw new MidtransServerException(
+                    "Midtrans cancel server error for orderId=" + orderId +
+                            " with status " + e.getStatusCode(), e);
+        } catch (ResourceAccessException e) {
+            throw new MidtransServerException(
+                    "Midtrans cancel unreachable for orderId=" + orderId, e);
+        } catch (RestClientException e) {
+            throw new MidtransServerException(
+                    "Midtrans cancel failed unexpectedly for orderId=" + orderId, e);
+        }
     }
 
     @Override

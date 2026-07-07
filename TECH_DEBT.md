@@ -96,15 +96,18 @@
 - Ditunda; kandidat sub-fase security setelah Fase 5b
 
 
-## ✅ Kompensasi reserve gagal (stok kurang) — DITANGANI 2026-07-07
+## ✅ Kompensasi reserve gagal (stok kurang) — DITUTUP PENUH 2026-07-07
 - Inventory: reserve gagal → catat Reservation status FAILED (idempoten, bukan rollback) +
   publish StockReservationFailedEvent ke topik inventory.reservation-failed.
 - Order: StockReservationFailedConsumer → OrderCancellationService set OrderStatus.CANCELLED
   (hanya jika masih WAITING_PAYMENT; idempoten).
-- SISA (belum): Payment belum membatalkan VA saat kompensasi ini. VA yang sudah dibuat tetap
-  terbuka → user secara teknis masih bisa transfer ke order yang sudah CANCELLED.
-  Proper: Payment consume inventory.reservation-failed → Midtrans cancel + tandai FAILED.
-  Butuh Midtrans cancel API; ditunda ke iterasi berikutnya.
+- Payment: InventoryReservationFailedConsumer → PaymentCancellationService: transisi
+  PENDING→FAILED (atomik) + void VA di Midtrans (MidtransClient.cancel, best-effort di luar tx).
+  Saga kini tertutup penuh: stok balik, order CANCELLED, payment FAILED, VA dibatalkan.
+- Residual (kecil): kalau StockReservationFailed tiba SEBELUM Payment membuat VA (race antar
+  consumer order.created), failIfPending menemukan payment INITIATED/not-found → skip; markPending
+  berikutnya tetap membuat VA tanpa dibatalkan. Jarang (VA dibuat cepat). Kandidat ditutup lewat
+  reconciliation (scan order FAILED yang masih punya VA aktif) bila memang diperlukan.
 
 
 ## Cache staleness pada GET /payments/{orderId} (Fase 5c)
