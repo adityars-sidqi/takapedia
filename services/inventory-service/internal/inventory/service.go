@@ -27,9 +27,11 @@ func NewService(db *gorm.DB) *Service {
 }
 
 // Reserve memotong stok saat order dibuat (VA diminta), secara idempoten.
-// Satu transaksi: catat Reservation(DEDUCTED) + potong stok — sukses bersama atau gagal bersama.
+// Kalau stok kurang, reservasi TETAP dicatat dengan status FAILED (bukan rollback) supaya
+// idempoten dan pemanggil bisa menerbitkan event kompensasi. Return ErrInsufficientStock.
 func (s *Service) Reserve(orderID, productID uuid.UUID, quantity int) error {
-	return s.db.Transaction(func(tx *gorm.DB) error {
+	var insufficient bool
+	err := s.db.Transaction(func(tx *gorm.DB) error {
 		// Langkah 1: catat reservasi. OrderID PRIMARY KEY → INSERT duplikat gagal atomik.
 		res := Reservation{
 			OrderID:   orderID,
@@ -52,11 +54,24 @@ func (s *Service) Reserve(orderID, productID uuid.UUID, quantity int) error {
 			return result.Error
 		}
 		if result.RowsAffected == 0 {
-			// Stok kurang atau produk tak ada → rollback (reservasi ikut batal).
-			return ErrInsufficientStock
+			// Stok kurang/produk tak ada: tandai reservasi FAILED & COMMIT (bukan rollback),
+			// supaya redelivery order.created tidak memicu publish kompensasi ganda.
+			if err := tx.Model(&Reservation{}).
+				Where("order_id = ?", orderID).
+				UpdateColumn("status", StatusFailed).Error; err != nil {
+				return err
+			}
+			insufficient = true
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	if insufficient {
+		return ErrInsufficientStock
+	}
+	return nil
 }
 
 // Confirm menandai reservasi CONFIRMED saat pembayaran sukses.

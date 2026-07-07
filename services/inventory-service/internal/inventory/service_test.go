@@ -92,7 +92,8 @@ func TestReserve_Idempotent(t *testing.T) {
 	}
 }
 
-// Stok kurang → error, dan tidak ada efek samping (reservasi ikut rollback, stok tetap).
+// Stok kurang → ErrInsufficientStock, stok tetap, TAPI reservasi dicatat FAILED
+// (bukan rollback) supaya idempoten & memicu kompensasi.
 func TestReserve_InsufficientStock(t *testing.T) {
 	cleanTables(t)
 	service := NewService(testDB)
@@ -108,8 +109,19 @@ func TestReserve_InsufficientStock(t *testing.T) {
 	if got := getQuantity(t, productID); got != 2 {
 		t.Errorf("expected quantity to stay 2, got %d", got)
 	}
-	if got := countReservations(t); got != 0 {
-		t.Errorf("expected no reservation recorded, got %d", got)
+	if got := countReservations(t); got != 1 {
+		t.Errorf("expected reservation recorded (FAILED), got %d", got)
+	}
+	if got := getReservationStatus(t, orderID); got != StatusFailed {
+		t.Errorf("expected status FAILED, got %s", got)
+	}
+
+	// Redelivery order.created yang sama → ditolak duplikat (kompensasi tak dobel).
+	if err := service.Reserve(orderID, productID, 3); err != ErrAlreadyProcessed {
+		t.Errorf("duplicate after failed: expected ErrAlreadyProcessed, got: %v", err)
+	}
+	if got := countReservations(t); got != 1 {
+		t.Errorf("expected still 1 reservation after duplicate, got %d", got)
 	}
 }
 

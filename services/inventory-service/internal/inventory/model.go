@@ -20,6 +20,8 @@ const (
 	StatusConfirmed = "CONFIRMED"
 	// StatusReturned: pembayaran gagal/expired — stok sudah dikembalikan (kompensasi).
 	StatusReturned = "RETURNED"
+	// StatusFailed: reserve gagal karena stok kurang — dicatat agar idempoten & memicu kompensasi.
+	StatusFailed = "FAILED"
 )
 
 // Reservation adalah state saga per order SEKALIGUS kunci idempotency.

@@ -51,8 +51,14 @@ func (c *Consumer) Run(ctx context.Context) error {
 	}
 }
 
+// ReservationFailedPublisher menerbitkan event kompensasi saat reserve gagal (stok kurang).
+type ReservationFailedPublisher interface {
+	PublishReservationFailed(orderID, productID uuid.UUID, quantity int, reason string) error
+}
+
 // OrderCreatedHandler: order.created → reserve (potong stok saat order dibuat).
-func OrderCreatedHandler(svc *inventory.Service) MessageHandler {
+// Kalau stok kurang, publish StockReservationFailed sebagai kompensasi ke Order Service.
+func OrderCreatedHandler(svc *inventory.Service, publisher ReservationFailedPublisher) MessageHandler {
 	return func(value []byte) {
 		var evt event.OrderCreatedEvent
 		if err := json.Unmarshal(value, &evt); err != nil {
@@ -63,6 +69,12 @@ func OrderCreatedHandler(svc *inventory.Service) MessageHandler {
 		switch {
 		case errors.Is(err, inventory.ErrAlreadyProcessed):
 			log.Printf("order %s sudah di-reserve, skip", evt.OrderID)
+		case errors.Is(err, inventory.ErrInsufficientStock):
+			log.Printf("order %s: stok kurang → publish kompensasi StockReservationFailed", evt.OrderID)
+			if perr := publisher.PublishReservationFailed(
+				evt.OrderID, evt.ProductID, evt.Quantity, "INSUFFICIENT_STOCK"); perr != nil {
+				log.Printf("gagal publish StockReservationFailed order %s: %v", evt.OrderID, perr)
+			}
 		case err != nil:
 			log.Printf("gagal reserve order %s: %v", evt.OrderID, err)
 		default:

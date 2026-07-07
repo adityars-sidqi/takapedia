@@ -96,15 +96,15 @@
 - Ditunda; kandidat sub-fase security setelah Fase 5b
 
 
-## Reserve gagal (stok kurang) tidak dikompensasi ke Order (Fase 5c)
-- Flow saga dipilih: Inventory potong stok saat OrderCreated (bukan saat bayar sukses),
-  lalu kembalikan saat PaymentCompleted(FAILED/EXPIRED). Alasan: sesuai keputusan produk.
-- Gap: kalau stok kurang saat reserve (ErrInsufficientStock), Inventory hanya log — TIDAK
-  ada event kompensasi ke Order. Order tetap lanjut minta VA & bisa PAID walau stok tak ada.
-- Proper: publish event (mis. StockReservationFailed) → Order set PAYMENT_FAILED/CANCELLED +
-  Payment batalkan VA. Ditunda; butuh event baru + consumer di Order Service.
-- Terkait: idempotency Inventory kini via Reservation.status (DEDUCTED→CONFIRMED/RETURNED),
-  menggantikan processed_events.
+## ✅ Kompensasi reserve gagal (stok kurang) — DITANGANI 2026-07-07
+- Inventory: reserve gagal → catat Reservation status FAILED (idempoten, bukan rollback) +
+  publish StockReservationFailedEvent ke topik inventory.reservation-failed.
+- Order: StockReservationFailedConsumer → OrderCancellationService set OrderStatus.CANCELLED
+  (hanya jika masih WAITING_PAYMENT; idempoten).
+- SISA (belum): Payment belum membatalkan VA saat kompensasi ini. VA yang sudah dibuat tetap
+  terbuka → user secara teknis masih bisa transfer ke order yang sudah CANCELLED.
+  Proper: Payment consume inventory.reservation-failed → Midtrans cancel + tandai FAILED.
+  Butuh Midtrans cancel API; ditunda ke iterasi berikutnya.
 
 
 ## Cache staleness pada GET /payments/{orderId} (Fase 5c)
