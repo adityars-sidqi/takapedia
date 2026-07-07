@@ -129,7 +129,7 @@ Target: sistem tahan banting. Belajar dari kegagalan yang kamu buat sendiri.
 Target: lengkapi service tersisa + lapisan observasi.
 
 - [x] Bangun **Notification Service** (Go): consume `payment.completed` → notifikasi/invoice per outcome, idempotent
-- [x] Bangun **Delivery Service** (consume `OrderPaid` → buat Shipment PENDING, idempotent)
+- [x] Bangun **Delivery Service** (consume `OrderPaid` → Shipment PENDING, idempotent; lifecycle PENDING→SHIPPED→DELIVERED via REST)
 - [ ] **Log Management** terpusat (ELK stack)
 - [ ] Distributed tracing
 - [ ] **Transactional Outbox** — publikasi event atomik dengan penulisan DB
